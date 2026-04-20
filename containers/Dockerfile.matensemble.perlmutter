@@ -1,0 +1,15 @@
+FROM ghcr.io/freddude2004/matensemble-base:perlmutter
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
+    /usr/local/bin/uv --version
+
+# setup uv to install deps to /opt/basic
+ENV UV_PROJECT_ENVIRONMENT=/opt/basic
+
+# clone MatEnsemble
+WORKDIR /opt/src
+RUN rm -rf /opt/basic/lib/python3.12/site-packages/tabulate*            && \
+    git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git && \
+    cd MatEnsemble                                                      && \
+    uv export --format requirements.txt --output-file requirements.txt  && \
+    uv pip install -r requirements.txt
