@@ -18,10 +18,7 @@ As explained in the following sections, such an online adaptive framework enable
 Scalable and adaptive scheduling
 =========================================
 
-High Throughput Computing (HTC) maximizes completed work over long windows by running **many independent**
-tasks, often modest in size. Sites frequently call this pattern **task farming**.
-
-Farming through raw Slurm has costs:
+In the context of high-throughput materials modeling, farming through raw Slurm has costs:
 
 * Many short ``sbatch`` / ``srun`` invocations increase scheduler load and log volume.
 * Queue latency dominates when tasks are tiny relative to scheduler quanta.
