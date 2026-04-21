@@ -3,10 +3,7 @@
 
 MatEnsemble Documentation
 =========================
-
-MatEnsemble orchestrates large batches of **Flux**-scheduled tasks on HPC systems: Python callables,
-shell commands, explicit resource requests, and **dependency-aware** execution graphs from a single
-Python driver process.
+An adaptive and highly asynchronous ensemble simulation workflow manager with in-memory dynamics (GPU) and on-the-fly analysis (CPU) capabilties.
 
 .. toctree::
    :maxdepth: 2
