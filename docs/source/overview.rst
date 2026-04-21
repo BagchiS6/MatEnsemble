@@ -2,14 +2,9 @@
 Overview
 ========
 
-MatEnsemble is a **workflow manager** for running many similar :class:`~matensemble.chore.Chore` instances on a
-supercomputer as efficiently as possible. You build a directed acyclic graph (DAG) in Python; MatEnsemble
-submits work to **Flux**, tracks completions, records logs, and keeps hardware busy while tasks finish
-at different rates.
-
-The library targets **high-throughput** and **ensemble** scenarios: thousands of small simulations,
-parameter sweeps, or analysis pipelines where classic “one Slurm job per task” workflows would overwhelm the
-scheduler or spend too much time queued.
+MatEnsemble is a framework to build, orchestrate and asynchronously manage scalable workflows, especially targeted for compute-intensive AI-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field etc.) as efficiently as possible. 
+Apart from standard automated high-throughput computations, the core of MatEsnemble is designed to support "user-defined" aquistion strategie to dynamically steer workflows based on intermediate results, which is a common pattern in active learning and other autonomous workflows at scale.
+To enable extremely scalable paramettric sweeps and bypass standard scheduler bottlenecks, typically encountered in leadership computing platforms, MatEnsemble uses a single large allocation and an internal scheduler to manage arbitrarily larger workloads. The library is built on top of the Flux resource manager, which provides efficient job scheduling and resource management capabilities, making it well-suited for high-throughput computing scenarios.
 
 High-throughput computing and schedulers
 =========================================
