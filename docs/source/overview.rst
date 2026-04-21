@@ -6,7 +6,16 @@ MatEnsemble is a framework to build, orchestrate and asynchronously manage scala
 Apart from standard automated high-throughput computations, the core of MatEsnemble is designed to support "user-defined" aquistion strategie to dynamically steer workflows based on intermediate results, which is a common pattern in active learning and other autonomous workflows at scale.
 To enable extremely scalable paramettric sweeps and bypass standard scheduler bottlenecks, typically encountered in leadership computing platforms, MatEnsemble uses a single large allocation and an internal scheduler to manage arbitrarily larger workloads. The library is built on top of the Flux resource manager, which provides efficient job scheduling and resource management capabilities, making it well-suited for high-throughput computing scenarios.
 
-High-throughput computing and schedulers
+
+MatEnsemble benefits from the native python executor-interface of \texttt{Flux} \cite{ahn2020flux}, \
+and the concurrent asynchronous programming model of core python through \texttt{Future} objects \cite{quinlan2009futures}. \
+A continuous throughput is maintained via dynamically spawning and monitoring task. Furthermore, to enable real-time streaming of post-processed data \
+from large-scale atomistic trajectories an \textit{in-memory} data analysis protocol is used by exploiting the heterogeneous (GPU+CPU) architecture of Exascale systems (e.g., Frontier) 
+via a round-robin MPI-communicator splitting approach (c.f. \cite{bagchi2025matensemble}). \
+As explained in the following sections, such an online adaptive framework enables efficiently coupling between available computing resource chunks for ensemble evaluations guided by adaptive sampling methods. 
+
+
+Scalable and adaptive scheduling
 =========================================
 
 High Throughput Computing (HTC) maximizes completed work over long windows by running **many independent**
