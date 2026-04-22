@@ -13,7 +13,8 @@ An adaptive and highly asynchronous ensemble simulation workflow manager with in
    architecture
    quickstart
    tutorials
-   reference
+   api_reference
+   team
 
 .. toctree::
    :maxdepth: 3
