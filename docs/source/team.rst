@@ -10,9 +10,9 @@ MatEnsemble is currently developed by the following team. You are welcome to con
 Core Contributors
 -----------------
 
-- **Conceptualization and Lead Developer**: [Soumendu Bagchi] - Project vision and coordination
-- **Design Lead**: [Kaleb Duchesneau] - Core architecture and implementation
-- **QCAD (LDRD/INTERSECT) P.I.**: [P. Ganesh] - Project oversight and strategic guidance
+- **Conceptualization and Lead Developer**: Soumendu Bagchi - Project vision and coordination
+- **Design Lead**: Kaleb Duchesneau - Architecture, implementation and maintenance
+- **QCAD (LDRD/INTERSECT) contact**: P. Ganesh - Project oversight and strategic guidance
 
 Contact
 -------
