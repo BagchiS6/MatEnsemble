@@ -56,19 +56,18 @@ class EnsembleDynamicsRunner:
 
     def build_dynopro_chores(
         self,
-        root: Path,
-        basedir: Path,
         outdir: Path,
     ) -> list[Chore]:
         chores = []
 
-        if length := len(self.sim_list) != len(self.sim_args_list):
+        length = len(self.sim_list)
+        if length != len(self.sim_args_list):
             raise Exception(
                 "Dynopro Error: the length of the simulation list and simulation argument list are not equal."
             )
         else:
             for i in range(length):
-                popped = sim_list.pop(0)
+                popped = self.sim_list.pop(0)
                 chore_id = f"chore-dynopro-{popped}-{i:04d}"
                 resources = Resources(
                     num_tasks=self.tasks_per_job,
@@ -77,10 +76,12 @@ class EnsembleDynamicsRunner:
                 )
                 workdir = outdir / chore_id
 
+                args = self.sim_args_list.pop(0)
+                command = f"{self.sim_command} '{args}'"
                 chores.append(
                     Chore(
                         id=chore_id,
-                        command=self.sim_command,
+                        command=command,
                         chore_type=ChoreType.EXECUTABLE,
                         resources=resources,
                         workdir=workdir,
@@ -100,7 +101,7 @@ class EnsembleDynamicsRunner:
         basedir = root / f"matensemble_workflow-{datetime.datetime.now():%Y%m%d_%H%M%S}"
         outdir = basedir / "out"
 
-        chores = self.build_dynopro_chores(root, basedir, outdir)
+        chores = self.build_dynopro_chores(outdir)
 
         # Initialize FluxManager
         fm = FluxManager(

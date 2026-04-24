@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import pickle
+import flux
 
 from matensemble.fluxlet import Fluxlet
 from matensemble.chore import Chore
@@ -32,10 +33,11 @@ def test_fluxlet_submit_writes_chore_spec_and_sets_jobspec_fields(tmp_path):
         workdir=workdir,
         func_module="tasks",
         func_qualname="run",
+        serialized_callable=b"hello",
     )
 
     executor = RecordingExecutor()
-    fluxlet = Fluxlet(handle=None)
+    fluxlet = Fluxlet(handle=flux.Flux())
     fut = fluxlet.submit(
         executor,
         chore,
@@ -84,7 +86,7 @@ def test_fluxlet_submit_inherit_env_true_copies_manager_environment(
     )
 
     executor = RecordingExecutor()
-    fluxlet = Fluxlet(handle=None)
+    fluxlet = Fluxlet(handle=flux.Flux())
     fluxlet.submit(executor, chore)
 
     jobspec = executor.submitted_jobspecs[0]
@@ -105,7 +107,7 @@ def test_fluxlet_submit_inherit_env_false_uses_only_chore_env(tmp_path, monkeypa
     )
 
     executor = RecordingExecutor()
-    fluxlet = Fluxlet(handle=None)
+    fluxlet = Fluxlet(handle=flux.Flux())
     fluxlet.submit(executor, chore)
 
     jobspec = executor.submitted_jobspecs[0]

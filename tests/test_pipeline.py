@@ -55,7 +55,7 @@ def test_chore_decorator_builds_python_chore_and_output_reference(tmp_path):
     )(top_level_add)
 
     ref = wrapped(4, y=5)
-    assert ref == OutputReference("chore-add-0001")
+    assert ref == OutputReference("chore-add-0001", pipe._chore_list[0].workdir)
     assert len(pipe._chore_list) == 1
 
     chore = pipe._chore_list[0]
@@ -87,7 +87,7 @@ def test_chore_decorator_collects_dependencies(tmp_path):
     assert pipe._chore_list[1].deps == ("chore-top_level_add-0001",)
 
 
-def test_nested_local_function_is_rejected(tmp_path):
+def test_nested_local_function_is_serialized(tmp_path):
     pipe = Pipeline(basedir=str(tmp_path))
 
     def outer():
@@ -97,8 +97,13 @@ def test_nested_local_function_is_rejected(tmp_path):
         return inner
 
     wrapped = pipe.chore()(outer())
-    with pytest.raises(ValueError, match="top-level callables"):
-        wrapped(1)
+    ref = wrapped(1)
+
+    assert ref.chore_id == "chore-inner-0001"
+    chore = pipe._chore_list[0]
+    assert chore.func_module is None
+    assert chore.func_qualname is None
+    assert chore.serialized_callable is not None
 
 
 def test_exec_builds_executable_chore(tmp_path):
@@ -186,6 +191,7 @@ def test_submit_builds_sorted_chore_list_and_calls_manager(monkeypatch, tmp_path
     assert DummyManager.created["set_gpu_affinity"] is True
     assert DummyManager.run_args == {
         "buffer_time": 0.25,
+        "log_delay": 5.0,
         "adaptive": False,
         "dynopro": True,
         "processing_strategy": "sentinel",
