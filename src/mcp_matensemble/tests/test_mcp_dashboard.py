@@ -102,8 +102,7 @@ def test_frontier_dashboard_access_expands_login_host(monkeypatch):
 
     assert result["ssh_target"] == "kaleb@login04.frontier.olcf.ornl.gov"
     assert result["command_text"] == (
-        "ssh -N -L 8000:127.0.0.1:8000 "
-        "kaleb@login04.frontier.olcf.ornl.gov"
+        "ssh -N -L 8000:127.0.0.1:8000 " "kaleb@login04.frontier.olcf.ornl.gov"
     )
 
 

@@ -12,7 +12,6 @@ Frontier nodes expose 8 GPU devices as MI250X GCDs and 64 CPU cores. The Flux
 broker uses one allocated node, so with ``#SBATCH -N 2`` this workflow requests
 one dynopro worker node by default. Override the defaults with
 MATENSEMBLE_DYNOPRO_NNODES, MATENSEMBLE_GPUS_PER_NODE, or
-MATENSEMBLE_CORES_PER_NODE if your allocation layout is different.
 """
 
 from __future__ import annotations
@@ -23,6 +22,7 @@ from pathlib import Path
 
 from matensemble.pipeline import Pipeline
 
+NNODES = int(os.environ.get("MATENSEMBLE_DYNOPRO_NNODES", "1"))
 GPUS_PER_NODE = int(os.environ.get("MATENSEMBLE_GPUS_PER_NODE", "8"))
 CORES_PER_NODE = int(os.environ.get("MATENSEMBLE_CORES_PER_NODE", "64"))
 STREAM_TAG = 4100

@@ -245,6 +245,38 @@
 - [x] Creation of the environment
 - [x] DAG workflow based on active learning
 
+## --- Dynopro Upgrades ---
+- [ ] Add things into the MatEnsemble API to allow users to define the two subprocesses
+- [ ] Split the jobs between the ranks
+- [ ] Define them as chores
+
+## --- June 22nd, 2026 ---
+- [ ] Add a util function to turn the DAG into a photo
+- [ ] Update the Figures in JOSS paper to be much bigger.
+- [ ] Talk to Soumendu about using adaptive workflow with codex:
+- [ ] Make a demo comparing the other workflow managers to MatEnsemble (JobFlow, Parsl, libEnsemble, RADICAL-plot, scheduler from scratch)
+
+```python
+import subprocess
+import json
+
+# Request JSON output via prompt or flags
+command = ['codex', 'exec', '--json-experimental', 'Analyze my repository and count Python files. Return a JSON block.']
+result = subprocess.run(command, capture_output=True, text=True)
+
+# Parse the returned string into a standard Python dictionary
+try:
+    data = json.loads(result.stdout)
+    print(data["python_files_count"])
+except json.JSONDecodeError:
+    print("Failed to parse agent response as JSON")
+```
+This would be how he could use the agents with MatEnsemble to launch more chores
+>>>>>>> b69d872 (updated dynopro to make it more general)
+
+- [ ] Fix the MCP errors with launching the dashboard
+
+
 ## --- Reading List ---
 - [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
 - [x] [Containers as Jupyter Kernels](https://docs.nersc.gov/services/jupyter/how-to-guides/#how-to-use-a-container-to-run-a-jupyter-kernel)

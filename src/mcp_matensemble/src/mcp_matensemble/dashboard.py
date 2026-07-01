@@ -144,7 +144,10 @@ def _resolve_root(path: str) -> Path:
     root = Path(path).expanduser().resolve()
     if root.is_file() and root.name == "status.json":
         root = root.parent
-    if root.name.startswith("matensemble_workflow-") and (root / "status.json").exists():
+    if (
+        root.name.startswith("matensemble_workflow-")
+        and (root / "status.json").exists()
+    ):
         root = root.parent
     if not root.is_dir():
         raise ValueError(f"campaign_root does not exist or is not a directory: {root}")
