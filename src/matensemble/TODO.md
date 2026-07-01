@@ -277,6 +277,9 @@ This would be how he could use the agents with MatEnsemble to launch more chores
 - [ ] Fix the MCP errors with launching the dashboard
 
 
+- [ ] Fix the MCP errors with launching the dashboard
+
+
 ## --- Reading List ---
 - [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
 - [x] [Containers as Jupyter Kernels](https://docs.nersc.gov/services/jupyter/how-to-guides/#how-to-use-a-container-to-run-a-jupyter-kernel)

@@ -53,6 +53,17 @@ class Fluxlet:
             temp_name = tf.name
         os.replace(temp_name, chore.spec_path)
 
+    def _write_chore_spec_if_needed(self, chore: Chore) -> None:
+        if chore.chore_type is not ChoreType.PYTHON and chore.nnodes is None:
+            return
+
+        with tempfile.NamedTemporaryFile(
+            "wb", dir=chore.spec_path.parent, delete=False
+        ) as tf:
+            pickle.dump(chore, tf)
+            temp_name = tf.name
+        os.replace(temp_name, chore.spec_path)
+
     def submit(
         self,
         executor: flux.job.FluxExecutor,

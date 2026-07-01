@@ -9,7 +9,14 @@
 
 # MatEnsemble
 
+<<<<<<< HEAD
 MatEnsemble is a framework to build, orchestrate, and asynchronously manage extremely scalable adaptive-learning workflows, especially targeted for compute-intensive AI-driven high-throughput and ensemble-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field, etc.) as efficiently as possible.
+=======
+MatEnsemble is a framework to build, orchestrate, and asynchronously manage extremely scalable
+adaptive-learning workflows, especially targeted for compute-intensive AI-driven high-throughput and
+ensemble-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field, etc.) as
+efficiently as possible.
+>>>>>>> cb7d196 (updated dynopro to make it more general)
 
 While it can in general run on your personal Mac/Linux workstation and
 orchestrate arbitrary python callables, shell commands with explicit resource and dependency-aware
@@ -17,6 +24,32 @@ execution graphs from a single python workflow driver process,  MatEnsemble shin
 ***user-defined autonomous strategic*** execution of large batches of adaptively and
 hierarchically-scheduled tasks on HPC systems, specifically on Peta and Exascale computing
 facilities, e.g., Perlmutter, Frontier, Aurora etc.
+<<<<<<< HEAD
+
+Here is an example which defines a simple MPI chore, adds ten independent instances of it to a pipeline, and submits the workflow.
+
+```python
+pipe = Pipeline()
+
+# register a function the MatEnsemble
+@pipe.chore(num_tasks=10, cores_per_task=1, gpus_per_task=0, mpi=True)
+def mpi_hello_world():
+    size = MPI.COMM_WORLD.Get_size()
+    rank = MPI.COMM_WORLD.Get_rank()
+    name = MPI.Get_processor_name()
+
+    print(f"Hello World! I am process {rank} of {size} on {name}.")
+
+# adding 10 mpi_hello_world chores to the pipeline
+for _ in range(10):
+    mpi_hello_world()
+
+pipe.submit(log_delay=1)
+```
+
+Rather than launching the MPI jobs directly, you describe the work declaratively with the @pipe.chore decorator and enqueue each invocation. MatEnsemble then schedules the chores through Flux, allocating the requested resources (num_tasks, CPU cores, GPUs, and MPI support) for each job.
+=======
+>>>>>>> cb7d196 (updated dynopro to make it more general)
 
 Here is an example which defines a simple MPI chore, adds ten independent instances of it to a pipeline, and submits the workflow.
 
@@ -41,7 +74,18 @@ pipe.submit(log_delay=1)
 
 Rather than launching the MPI jobs directly, you describe the work declaratively with the @pipe.chore decorator and enqueue each invocation. MatEnsemble then schedules the chores through Flux, allocating the requested resources (num_tasks, CPU cores, GPUs, and MPI support) for each job.
 
-## minimal code example
+## Installation
+
+To install MatEnsemble you can follow our [documentation](https://matensemble.readthedocs.io/en/latest/) which will walk you through manual
+installation for different systems, and also give many helpful tips for working with containers
+
+You can also use our installation script to install MatEnsemble along side the MCP server with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/refs/heads/main/install.sh | bash
+```
+
+## Minimal Code Example
 
 MatEnsemble workflows are ordinary Python scripts (and/or shell commands) which can be use to: 1. define resource-aware chores, 2. pass chore outputs into later chores to create a DAG, and 3. add a strategy when the workflow should decide what to launch next while the campaign is already running.
 
