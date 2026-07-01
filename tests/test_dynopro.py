@@ -156,6 +156,8 @@ def test_pipeline_dynopro_rejects_per_subprocess_args_for_same_registered_name(
             cores_per_node=2,
             gpu_args=("gpu-only",),
         )
+=======
+>>>>>>> b69d872 (updated dynopro to make it more general)
 
 
 def test_pipeline_dynopro_rejects_unregistered_subprocess(tmp_path: Path):

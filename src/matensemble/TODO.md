@@ -272,12 +272,9 @@ except json.JSONDecodeError:
     print("Failed to parse agent response as JSON")
 ```
 This would be how he could use the agents with MatEnsemble to launch more chores
->>>>>>> b69d872 (updated dynopro to make it more general)
 
 - [ ] Fix the MCP errors with launching the dashboard
 
-
-- [ ] Fix the MCP errors with launching the dashboard
 
 
 ## --- Reading List ---

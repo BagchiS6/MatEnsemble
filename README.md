@@ -51,7 +51,12 @@ Rather than launching the MPI jobs directly, you describe the work declaratively
 =======
 >>>>>>> cb7d196 (updated dynopro to make it more general)
 
-While it can in general run on your personal Mac/Linux workstation and orchestrate arbitrary python callables, shell commands with explicit resource and dependency-aware execution graphs from a single python workflow driver process,  MatEnsemble shines with ***user-defined autonomous strategic*** execution of large batches of adaptively and hierarchically-scheduled tasks on HPC systems, specifically on Peta and Exascale computing facilities, e.g., Perlmutter, Frontier, Aurora etc.
+While it can in general run on your personal Mac/Linux workstation and
+orchestrate arbitrary python callables, shell commands with explicit resource and dependency-aware
+execution graphs from a single python workflow driver process,  MatEnsemble shines with
+***user-defined autonomous strategic*** execution of large batches of adaptively and
+hierarchically-scheduled tasks on HPC systems, specifically on Peta and Exascale computing
+facilities, e.g., Perlmutter, Frontier, Aurora etc.
 
 Here is an example which defines a simple MPI chore, adds ten independent instances of it to a pipeline, and submits the workflow.
 
