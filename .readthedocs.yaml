@@ -9,7 +9,7 @@ build:
       - python -m sphinx.ext.apidoc -o docs/source/api -f --separate --module-first src/matensemble src/matensemble/dynopro src/matensemble/redis
     build:
       html:
-        - uv run --group dev make -C docs html
+        - python -m sphinx -b html docs/source docs/build/html
         - mkdir -p "$READTHEDOCS_OUTPUT/html"
         - cp -R docs/build/html/. "$READTHEDOCS_OUTPUT/html/"
 
