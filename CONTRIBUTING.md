@@ -1,6 +1,6 @@
 # Contributing to MatEnsemble
 
-Thanks for helping improve MatEnsemble. The project sits at an awkward but interesting boundary between Python workflow APIs, Flux scheduling, containers, and site-specific HPC launch details, so good issues and small reproducible examples are especially valuable.
+Thanks for helping improve MatEnsemble. The project sits at an uncommon but interesting boundary between Python workflow APIs, Flux scheduling, containers, and site-specific HPC launch details, so good issues and small reproducible examples are especially valuable.
 
 ## Questions and Bugs
 
