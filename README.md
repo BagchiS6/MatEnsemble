@@ -11,6 +11,8 @@
 
 MatEnsemble is a framework to build, orchestrate, and asynchronously manage extremely scalable adaptive-learning workflows, especially targeted for compute-intensive AI-driven high-throughput and ensemble-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field, etc.) as efficiently as possible.
 
+While it can in general run on your personal Mac/Linux workstation and orchestrate arbitrary python callables, shell commands with explicit resource and dependency-aware execution graphs from a single python workflow driver process,  MatEnsemble shines with ***user-defined autonomous strategic*** execution of large batches of adaptively and hierarchically-scheduled tasks on HPC systems, specifically on Peta and Exascale computing facilities, e.g., Perlmutter, Frontier, Aurora etc.
+
 Here is an example which defines a simple MPI chore, adds ten independent instances of it to a pipeline, and submits the workflow.
 
 ```python
