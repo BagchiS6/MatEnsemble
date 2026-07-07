@@ -14,23 +14,8 @@ MatEnsemble is a framework to build, orchestrate, and asynchronously manage extr
 While it can in general run on your personal Mac/Linux workstation and orchestrate arbitrary python callables, shell commands with explicit resource and dependency-aware execution graphs from a single python workflow driver process,  MatEnsemble shines with ***user-defined autonomous strategic*** execution of large batches of adaptively and hierarchically-scheduled tasks on HPC systems, specifically on Peta and Exascale computing facilities, e.g., Perlmutter, Frontier, Aurora etc.
 
 ## Installation
+For general installation see our [documentation](https://matensemble.readthedocs.io/en/latest/)
 
-If you are trying to use MatEnsemble on the Frontier, Pathfinder or Perlmutter super
-computers then you can quickly install MatEnsemble with our install script:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/refs/heads/main/install.sh | bash
-```
-
-For more general installation see our [documentation](https://matensemble.readthedocs.io/en/latest/)
-
-## Related
-
-- [Flux documentation](https://flux-framework.readthedocs.io/)
-- [Flux Python guide](https://flux-framework.readthedocs.io/projects/flux-core/en/latest/guide/start.html)
-- [Slurm documentation](https://slurm.schedmd.com/documentation.html) (common front-end to batch allocations)
-- [LAMMPS manual](https://docs.lammps.org/Manual.html) (often used alongside ensemble MD workflows)
-
-## License
-
-BSD 3-Clause. See [`LICENSE`](LICENSE).
+## Publications
+1. Bagchi, Soumendu, et al. "Towards “on-demand” van der Waals epitaxy with adaptive ensemble sampling atomistic workflows." Digital Discovery (2026) https://doi.org/10.1039/d6dd00049e.
+2. Morelock, Ryan, et al. "pyRMG: A framework for high-throughput, large-cell DFT calculations on supercomputers." The Journal of Chemical Physics 164.5 (2026).
