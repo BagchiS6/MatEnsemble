@@ -367,7 +367,6 @@ environment.
    apptainer pull image.sif docker://ghcr.io/q-cad/matensemble:frontier-vX.Y.Z
    apptainer build --sandbox ./matensemble_sand image.sif
 
-
 After building your container you can run your workflows interactively in flux quite simply. You can optionally install
 the MatEnsemble CLI tool to simplify the commands you need to run.
 
