@@ -109,7 +109,8 @@ The manager estimates **needed** cores and GPUs as ``num_tasks * cores_per_task`
 ``num_tasks * gpus_per_task``, and compares against:
 
 * The **total** allocation (all chores must fit in the worst case—oversized chores are marked invalid).
-* The **currently free** counts reported by Flux after rank 0 is drained for the broker.
+* The **currently free** counters initialized from Flux once after rank 0 is drained for the broker, then
+  decremented on submission and incremented when MatEnsemble processes each completed future.
 
 GPU affinity shell options are only applied when ``gpus_per_task > 0`` and GPU affinity is enabled
 on submit.
@@ -119,12 +120,13 @@ Main scheduling loop (“super loop”)
 
 Roughly each iteration:
 
-#. Refresh Flux free resource counts.
-#. Write ``status.json`` and a log line with pending / running / completed / failed counts.
-#. Drain the **ready** queue and submit every chore that fits; defer the rest to the back of the queue.
-#. Wait up to ``buffer_time`` seconds for at least one Flux future to complete (strategy-dependent).
-#. For each finished future: interpret exit code / exceptions, update dependents, and (in adaptive
-   mode) try to submit more work immediately.
+#. Drain the **ready** queue and submit every chore that fits the locally tracked free resources; defer the
+   rest to the back of the queue.
+#. Wait for Flux futures according to the selected strategy.
+#. For each finished future: interpret exit code / exceptions, release resources, update dependents, and log
+   the resulting status.
+#. In adaptive mode, try to submit more work immediately. In non-adaptive mode, defer submission until every
+   future in the current wave has finished.
 
 The two built-in strategies are :class:`~matensemble.strategy.AdaptiveStrategy` and
 :class:`~matensemble.strategy.NonAdaptiveStrategy`; see :doc:`reference` for behavioral differences.

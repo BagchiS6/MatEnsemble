@@ -144,17 +144,23 @@ class FluxManager:
         self._completed_chores = []
         self._failed_chores = []
         self._futures = set()
+        self._state_lock = threading.RLock()
 
-        # acquiring a flux handle
+        # Acquire one Flux resource snapshot at startup. Fluxlet receives the
+        # resulting topology so it does not issue a duplicate resource-list RPC.
         self._flux_handle = flux.Flux()
-        self._fluxlet = Fluxlet(self._flux_handle)
+        self._nnodes_on_allocation, self._cores_per_node, self._gpus_per_node = (
+            self._get_allocation_info()
+        )
+        self._fluxlet = Fluxlet(
+            self._flux_handle,
+            num_nodes=self._nnodes_on_allocation,
+            gpus_per_node=self._gpus_per_node,
+        )
 
         self._write_restart_freq = write_restart_freq
 
         # setup logging
-        self._nnodes_on_allocation, self._cores_per_node, self._gpus_per_node = (
-            self._get_allocation_info()
-        )
         self._set_cpu_affinity = set_cpu_affinity
         self._set_gpu_affinity = set_gpu_affinity
 
@@ -218,28 +224,42 @@ class FluxManager:
         """
         Update the status file and append a progress line in the log file
         """
-        pending = len(self._ready) + len(self._blocked)
-        self._status_writer.update(
-            pending=pending,
-            ready=len(self._ready),
-            blocked=len(self._blocked),
-            running=len(self._running_chores),
-            completed=len(self._completed_chores),
-            failed=len(self._failed_chores),
-            free_cores=self._free_cores,
-            free_gpus=self._free_gpus,
-            failures=self._failed_chores,
-        )
+        # The logging thread and submission loop share these fields. Hold one
+        # lock through snapshot creation and writing so a record cannot combine
+        # the pending count from before a submission with the running/resource
+        # counts from after it.
+        with self._state_lock:
+            pending = len(self._ready) + len(self._blocked)
+            ready = len(self._ready)
+            blocked = len(self._blocked)
+            running = len(self._running_chores)
+            completed = len(self._completed_chores)
+            failed = len(self._failed_chores)
+            free_cores = self._free_cores
+            free_gpus = self._free_gpus
+            failures = list(self._failed_chores)
 
-        self._logger.info(
-            "CHORES: Pending=%d Running=%d Completed=%d Failed=%d | RESOURCES: Free_cores=%d Free_gpus=%d",
-            pending,
-            len(self._running_chores),
-            len(self._completed_chores),
-            len(self._failed_chores),
-            self._free_cores,
-            self._free_gpus,
-        )
+            self._status_writer.update(
+                pending=pending,
+                ready=ready,
+                blocked=blocked,
+                running=running,
+                completed=completed,
+                failed=failed,
+                free_cores=free_cores,
+                free_gpus=free_gpus,
+                failures=failures,
+            )
+
+            self._logger.info(
+                "CHORES: Pending=%d Running=%d Completed=%d Failed=%d | RESOURCES: Free_cores=%d Free_gpus=%d",
+                pending,
+                running,
+                completed,
+                failed,
+                free_cores,
+                free_gpus,
+            )
 
     def _get_allocation_info(self) -> tuple[int, int, int]:
         """
@@ -250,7 +270,7 @@ class FluxManager:
         # drain broker rank first, then measure what is actually usable
         self._flux_handle.rpc("resource.drain", {"targets": "0"}).get()
 
-        resources = flux.resource.list.resource_list(self._flux_handle).get()
+        resources = self._check_resources()
         nnodes = len(resources.free.ranks)
         total_cores = resources.free.ncores
         total_gpus = resources.free.ngpus
@@ -294,8 +314,12 @@ class FluxManager:
 
         needed_cores, needed_gpus = self._chore_resource_footprint(chore)
 
-        total_cores = self._nnodes_on_allocation * self._cores_per_node
-        total_gpus = self._nnodes_on_allocation * self._gpus_per_node
+        total_cores = getattr(self, "_total_cores", None)
+        if total_cores is None:
+            total_cores = self._nnodes_on_allocation * self._cores_per_node
+        total_gpus = getattr(self, "_total_gpus", None)
+        if total_gpus is None:
+            total_gpus = self._nnodes_on_allocation * self._gpus_per_node
 
         return needed_cores <= total_cores and needed_gpus <= total_gpus
 
@@ -324,19 +348,87 @@ class FluxManager:
                 )
                 self._fail_dependents(chore_id)
 
-    def _check_resources(self) -> None:
+    def _check_resources(self):
         """
-        Gets the available resources from Flux's Remote Procedure Call (RPC)
-        and sets them as private fields
+        Initialize resource counters from one Flux resource snapshot.
+
+        After jobs start, MatEnsemble owns these counters: submission reserves
+        resources and future completion releases them. Re-polling Flux in the
+        scheduling loop can observe a different instant than future processing,
+        double-count released resources, and adds an RPC to the adaptive refill
+        path.
 
         Return
         ------
-        None
+        flux.resource.ResourceList
+            The Flux resource snapshot used to initialize the counters.
         """
 
+        with self._state_lock:
+            if self._running_chores:
+                raise RuntimeError(
+                    "Flux resources may only be polled before chores are submitted; "
+                    "runtime capacity is tracked from submissions and completions"
+                )
+
         resources = flux.resource.list.resource_list(self._flux_handle).get()
-        self._free_cores = resources.free.ncores
-        self._free_gpus = resources.free.ngpus
+        with self._state_lock:
+            self._total_cores = resources.free.ncores
+            self._total_gpus = resources.free.ngpus
+            self._free_cores = self._total_cores
+            self._free_gpus = self._total_gpus
+        return resources
+
+    def _release_resources(self, chore: Chore) -> tuple[int, int]:
+        """Return a finished chore's resources to the local available pool."""
+
+        released_cores, released_gpus = self._chore_resource_footprint(chore)
+        self._free_cores += released_cores
+        self._free_gpus += released_gpus
+
+        if (
+            self._free_cores > self._total_cores
+            or self._free_gpus > self._total_gpus
+        ):
+            raise RuntimeError(
+                "resource accounting exceeded the initial Flux allocation after "
+                f"finishing {chore.id}: cores={self._free_cores}/{self._total_cores}, "
+                f"gpus={self._free_gpus}/{self._total_gpus}"
+            )
+
+        return released_cores, released_gpus
+
+    def _finish_chore(
+        self,
+        chore: Chore,
+        *,
+        failure_reason: str | None = None,
+        exception: str | None = None,
+    ) -> tuple[int, int]:
+        """Atomically record a terminal chore and release its resources."""
+
+        chore_id = chore.id
+        with self._state_lock:
+            self._running_chores.remove(chore_id)
+            released = self._release_resources(chore)
+
+            if failure_reason is not None:
+                self._record_failure(
+                    chore_id,
+                    reason=failure_reason,
+                    exception=exception,
+                )
+                self._fail_dependents(chore_id)
+                return released
+
+            self._completed_chores.append(chore_id)
+            for dep_id in self._dependents.get(chore_id, []):
+                self._remaining_deps[dep_id] -= 1
+                if self._remaining_deps[dep_id] == 0:
+                    self._mark_ready(dep_id)
+                    self._blocked.discard(dep_id)
+
+            return released
 
     def _can_submit_now(self, chore: Chore) -> bool:
         """
@@ -409,7 +501,7 @@ class FluxManager:
 
     def _submit_one(
         self, chore_id: str, buffer_time: float, dynopro: bool = False
-    ) -> None:
+    ) -> bool:
         """
         Submits a :obj:`Chore` and does book-keeping all the queues and resources
         count
@@ -417,7 +509,8 @@ class FluxManager:
         Parameters
         ----------
         buffer_time : float
-            The amount of time in seconds buffer the submission of :obj:`Chore`'s
+            Retained for compatibility with custom strategies. Submission is
+            intentionally not delayed; the value controls future waiting.
         """
 
         chore = self._chores_by_id[chore_id]
@@ -439,7 +532,7 @@ class FluxManager:
             )
             self._fail_dependents(chore_id)
             self._blocked.discard(chore_id)
-            return
+            return False
 
         self._blocked.discard(chore_id)
         fut.chore_id = chore_id
@@ -450,7 +543,7 @@ class FluxManager:
         needed_cores, needed_gpus = self._chore_resource_footprint(chore)
         self._free_cores -= needed_cores
         self._free_gpus -= needed_gpus
-        time.sleep(buffer_time)
+        return True
 
     def _submit_until_ooresources(
         self, buffer_time: float, dynopro: bool = False
@@ -461,42 +554,40 @@ class FluxManager:
         Parameters
         ----------
         buffer_time : float
-            The amount of time in seconds buffer the submission of :obj:`Chore`'s
+            Retained for compatibility with custom strategies. Submission is
+            immediate; the value controls future waiting.
         """
 
-        deferred = deque()
         submitted_any = False
 
-        while self._ready:
-            chore_id = self._ready.popleft()
-            chore = self._chores_by_id[chore_id]
+        # Examine every chore that was ready when this fill phase began. Jobs
+        # that do not fit are rotated to the back without ever disappearing
+        # from status snapshots. Holding the state lock across the quick Flux
+        # submission keeps queue, running, future, and resource transitions
+        # atomic with respect to the logging thread.
+        for _ in range(len(self._ready)):
+            with self._state_lock:
+                chore_id = self._ready[0]
+                chore = self._chores_by_id[chore_id]
 
-            if self._can_submit_now(chore):
-                self._submit_one(chore_id, buffer_time, dynopro=dynopro)
-                submitted_any = True
-            else:
-                deferred.append(chore_id)
+                if not self._can_submit_now(chore):
+                    self._ready.rotate(-1)
+                    continue
 
-        self._ready = deferred
+                self._ready.popleft()
+                submitted_any = (
+                    self._submit_one(chore_id, buffer_time, dynopro=dynopro)
+                    or submitted_any
+                )
+
         return submitted_any
 
-    def _log_worker(self, delay: float) -> None:
+    def _log_worker(self, delay: float, stop_event: threading.Event) -> None:
         """
         Function that updates the logs every so often
         """
-        done = (
-            len(self._ready) == 0
-            and len(self._running_chores) == 0
-            and len(self._blocked) == 0
-        )
-        while not done:
+        while not stop_event.wait(delay):
             self._log_progress()
-            time.sleep(delay)
-            done = (
-                len(self._ready) == 0
-                and len(self._running_chores) == 0
-                and len(self._blocked) == 0
-            )
 
     def _add_chore(self, chore: Chore) -> bool:
         """
@@ -507,6 +598,16 @@ class FluxManager:
         bool
             True if *chore* was admitted to the manager, False if it was rejected.
         """
+
+        # Keep direct ``__new__`` construction used by lightweight custom
+        # strategy tests compatible with the normal initialized manager.
+        if not hasattr(self, "_state_lock"):
+            self._state_lock = threading.RLock()
+        with self._state_lock:
+            return self._add_chore_locked(chore)
+
+    def _add_chore_locked(self, chore: Chore) -> bool:
+        """Implement :meth:`_add_chore` while the state lock is held."""
 
         if not self._chore_fits_allocation(chore):
             self._record_failure(chore.id, reason="chore_exceeds_allocation")
@@ -577,7 +678,8 @@ class FluxManager:
         Parameters
         ----------
         buffer_time : float
-            The amount of time in seconds buffer the submission of :obj:`Chore`'s
+            Maximum number of seconds adaptive strategies wait for a future
+            completion before checking the workflow state again.
         log_delay : float
             The amount of time in seconds that the log files will be written to
         adaptive : bool
@@ -593,16 +695,15 @@ class FluxManager:
 
         Notes
         -----
-        In adaptive mode, completed futures trigger a fresh Flux resource query
-        and can cause immediate backfilling before the next outer loop iteration.
+        In adaptive mode, each completed future releases its locally tracked
+        resources and can cause immediate backfilling before the next outer loop
+        iteration.
         In non-adaptive mode, completion processing waits for the entire currently
         running wave before the outer loop submits another.
 
         Each loop iteration:
 
-        #. Refreshes available resources
-        #. Prints a progress snapshot
-        #. Submits new chores until resources are exhausted
+        #. Submits new chores until locally tracked resources are exhausted
         #. processes completed chores using a FutureProcessingStrategy:
             * User implementation if a processing_strategy is used
             * AdaptiveStrategy if adaptive=True
@@ -617,8 +718,12 @@ class FluxManager:
             proc_strat = NonAdaptiveStrategy(self)
 
         buffer_time = 0.0 if buffer_time is None else float(buffer_time)
+        if buffer_time < 0:
+            raise ValueError("buffer_time must be non-negative")
+        if log_delay <= 0:
+            raise ValueError("log_delay must be greater than zero")
+        self._dynopro = dynopro
 
-        self._flux_handle.rpc("resource.drain", {"targets": "0"}).get()
         with flux.job.FluxExecutor() as executor:
             self._executor = executor
 
@@ -628,37 +733,44 @@ class FluxManager:
                 self._logger.info("=== ENTERING WORKFLOW ENVIRONMENT ===")
                 self._start_time = time.perf_counter()
 
-            # starting a thread to continueally log every {log_delay} seconds
-            self._check_resources()
+            self._validate_chores()
+
+            # Resource counters were initialized from Flux once during manager
+            # construction. From this point on, submissions and completions are
+            # the source of truth.
+            logging_stop = threading.Event()
             logging_thread = threading.Thread(
                 target=self._log_worker,
-                args=(log_delay,),
+                args=(log_delay, logging_stop),
                 daemon=True,
             )
             logging_thread.start()
+            try:
+                self._log_progress()
 
-            self._validate_chores()
-
-            ### Super Loop ###
-            done = (
-                len(self._ready) == 0
-                and len(self._running_chores) == 0
-                and len(self._blocked) == 0
-            )
-            while not done:
-                self._check_resources()
-                self._submit_until_ooresources(buffer_time=buffer_time, dynopro=dynopro)
-                proc_strat.process_futures(buffer_time=buffer_time)
-
+                ### Super Loop ###
                 done = (
                     len(self._ready) == 0
                     and len(self._running_chores) == 0
                     and len(self._blocked) == 0
                 )
-            ### Super Loop ###
+                while not done:
+                    self._submit_until_ooresources(
+                        buffer_time=buffer_time, dynopro=dynopro
+                    )
+                    proc_strat.process_futures(buffer_time=buffer_time)
+
+                    done = (
+                        len(self._ready) == 0
+                        and len(self._running_chores) == 0
+                        and len(self._blocked) == 0
+                    )
+                ### Super Loop ###
+            finally:
+                logging_stop.set()
+                logging_thread.join()
 
             end = time.perf_counter()
-            logging_thread.join()
             self._log_progress()
             self._logger.info("=== EXITING WORKFLOW ENVIRONMENT ===")
             self._logger.info(

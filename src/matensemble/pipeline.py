@@ -902,8 +902,9 @@ class Pipeline:
             Restart/checkpoint files are not supported yet. Leave this as
             ``None``. Passing an integer raises :exc:`NotImplementedError`.
         buffer_time : float
-            The amount of seconds that the :obj:`FluxManager` should wait between
-            submission of chores, defaults to 1.0s.
+            Maximum number of seconds adaptive strategies wait for a future
+            completion before checking workflow state again. Chore submissions
+            are not delayed, defaults to 1.0s.
         log_delay : float
             The amount delay in seconds between the writing of logs
         set_cpu_affinity : bool

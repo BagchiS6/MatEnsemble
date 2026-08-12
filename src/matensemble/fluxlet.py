@@ -24,9 +24,15 @@ class Fluxlet:
     def __init__(
         self,
         handle: flux.Flux,
+        num_nodes: int | None = None,
+        gpus_per_node: int | None = None,
     ) -> None:
         self.handle = handle
-        self.num_nodes, self.gpus_per_node = self.get_gpus_per_node()
+        if num_nodes is None or gpus_per_node is None:
+            self.num_nodes, self.gpus_per_node = self.get_gpus_per_node()
+        else:
+            self.num_nodes = num_nodes
+            self.gpus_per_node = gpus_per_node
 
     def get_gpus_per_node(self) -> tuple[int, int]:
         """

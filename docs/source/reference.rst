@@ -59,8 +59,8 @@ a Python chore if you need DAG edges.
     :exc:`NotImplementedError` before work is submitted.
 
 ``buffer_time`` (:class:`float`; default ``1.0``)
-    Passed to :func:`concurrent.futures.wait` as the ``timeout`` when draining Flux futures; also used as a
-    :func:`time.sleep` after each individual submission. Set to ``0.0`` for minimal spacing.
+    Passed to :func:`concurrent.futures.wait` as the ``timeout`` while monitoring Flux futures. Ready chores
+    are submitted without an artificial delay.
 
 ``log_delay`` (:class:`float`; default ``5.0``)
     The amount of time the logging thread will wait before updating the logs. Dafaults to every ``5.0`` seconds.
@@ -71,7 +71,7 @@ a Python chore if you need DAG edges.
 
 ``adaptive`` (default ``True``)
     If true (and no custom ``processing_strategy`` is given), use :class:`~matensemble.strategy.AdaptiveStrategy`
-    so a completion refreshes available Flux resources and newly ready chores can be submitted inside the
+    so a completion releases locally tracked resources and newly ready chores can be submitted inside the
     completion loop. If false, :class:`~matensemble.strategy.NonAdaptiveStrategy` waits for the entire current
     wave of running chores to finish before the manager submits another wave.
 

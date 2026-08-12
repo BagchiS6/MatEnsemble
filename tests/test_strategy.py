@@ -1,6 +1,7 @@
 from concurrent.futures import Future
 from collections import deque
 from pathlib import Path
+import threading
 
 from matensemble.model import ChoreType, Resources
 from matensemble.manager import FluxManager
@@ -53,16 +54,30 @@ def _strategy_manager(chores: list[Chore]) -> FluxManager:
     manager._write_restart_freq = None
     manager._free_cores = 0
     manager._free_gpus = 0
+    manager._total_cores = len(chores)
+    manager._total_gpus = 0
     manager._nnodes_on_allocation = 1
     manager._cores_per_node = len(chores)
     manager._gpus_per_node = 0
-    manager._check_resources = lambda: setattr(
-        manager, "_free_cores", len(chores)
+    manager._state_lock = threading.RLock()
+    manager._dynopro = False
+    manager._logger = type(
+        "L",
+        (),
+        {
+            "info": staticmethod(lambda *args, **kwargs: None),
+            "error": staticmethod(lambda *args, **kwargs: None),
+            "exception": staticmethod(lambda *args, **kwargs: None),
+        },
+    )()
+    manager._log_progress = lambda: None
+    manager._check_resources = lambda: (_ for _ in ()).throw(
+        AssertionError("completion processing must not poll Flux")
     )
     return manager
 
 
-def test_adaptive_strategy_refreshes_capacity_before_backfill(tmp_path: Path):
+def test_adaptive_strategy_releases_capacity_before_backfill(tmp_path: Path):
     chore = Chore(
         id="adaptive-worker",
         workdir=tmp_path / "adaptive-worker",
@@ -96,13 +111,14 @@ def test_nonadaptive_strategy_waits_for_entire_wave(monkeypatch, tmp_path: Path)
     manager = _strategy_manager(chores)
     waited_on = None
 
-    def wait_for_wave(futures, **kwargs):
+    def complete_wave(futures):
         nonlocal waited_on
         waited_on = set(futures)
-        assert kwargs == {}
-        return set(futures), set()
+        yield from futures
 
-    monkeypatch.setattr("matensemble.strategy.concurrent.futures.wait", wait_for_wave)
+    monkeypatch.setattr(
+        "matensemble.strategy.concurrent.futures.as_completed", complete_wave
+    )
 
     NonAdaptiveStrategy(manager).process_futures(buffer_time=0.001)
 
@@ -110,5 +126,28 @@ def test_nonadaptive_strategy_waits_for_entire_wave(monkeypatch, tmp_path: Path)
     assert len(waited_on) == 3
     assert manager._futures == set()
     assert set(manager._completed_chores) == {chore.id for chore in chores}
-    # Capacity is refreshed by the manager at the beginning of the next wave.
-    assert manager._free_cores == 0
+    assert manager._free_cores == 3
+
+
+def test_nonadaptive_strategy_does_not_refill_during_wave(monkeypatch, tmp_path: Path):
+    chores = [
+        Chore(
+            id=f"wave-worker-{index}",
+            workdir=tmp_path / f"wave-worker-{index}",
+            command=["echo", "ok"],
+            chore_type=ChoreType.EXECUTABLE,
+            resources=Resources(),
+        )
+        for index in range(2)
+    ]
+    manager = _strategy_manager(chores)
+    submit_calls = []
+    manager._submit_until_ooresources = lambda **kwargs: submit_calls.append(kwargs)
+    monkeypatch.setattr(
+        "matensemble.strategy.concurrent.futures.as_completed",
+        lambda futures: iter(futures),
+    )
+
+    NonAdaptiveStrategy(manager).process_futures(buffer_time=0.001)
+
+    assert submit_calls == []
