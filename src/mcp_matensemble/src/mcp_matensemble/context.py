@@ -119,7 +119,7 @@ def get_examples_for_system(system: str | None = None) -> dict[str, str]:
     root = repo_root()
     files: dict[str, str] = {}
     for directory in (
-        root / "example_workflows" / "generic",
+        root / "example_workflows" / "general",
         root / "example_workflows" / key,
     ):
         files.update(_read_tree(directory, root))

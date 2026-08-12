@@ -16,7 +16,7 @@ Run it inside the repository dev container or another Flux-capable environment
 with the LAMMPS Python module installed:
 
 ```bash
-flux start -s 2 python example_workflows/generic/lammps_adaptive/workflow.py
+flux start -s 2 python example_workflows/general/lammps_adaptive/workflow.py
 ```
 
 The script writes normal MatEnsemble output under a timestamped

@@ -9,7 +9,7 @@ Run it from a Flux allocation with at least two ranks (MatEnsemble reserves rank
 0 for the broker):
 
 ```bash
-flux start -s 5 python example_workflows/generic/high_throughput/workflow.py \
+flux start -s 5 python example_workflows/general/high_throughput/workflow.py \
   --tasks 512 --min-seconds 0.25 --max-seconds 20
 ```
 
@@ -18,7 +18,7 @@ allocated slots but intentionally do not consume CPU while sleeping. Use `cpu`
 mode to keep the allocated CPU cores busy with synthetic floating-point work:
 
 ```bash
-flux start -s 5 python example_workflows/generic/high_throughput/workflow.py \
+flux start -s 5 python example_workflows/general/high_throughput/workflow.py \
   --tasks 512 --min-seconds 0.25 --max-seconds 20 --mode cpu
 ```
 
