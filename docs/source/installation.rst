@@ -6,7 +6,6 @@ This guide covers the different methods of **installing** MatEnsemble: **what mu
 environment and **copy-pastable patterns** for common HPC runtimes. Pair it with :doc:`tutorials`
 for code samples and with :doc:`design` if you need a mental model of the runtime.
 
-=======
 Versions and compatibility
 ==========================
 
@@ -46,13 +45,13 @@ on one physical machine:
 
 .. code-block:: bash
 
-   flux start -s 2 python example_workflows/generic/dependencies/workflow.py
+   flux start -s 2 python example_workflows/general/dependencies/workflow.py
 
 The dev container sets ``MATENSEMBLE_FLUX_START`` to this simulated launcher:
 
 .. code-block:: bash
 
-   $MATENSEMBLE_FLUX_START python example_workflows/generic/dependencies/workflow.py
+   $MATENSEMBLE_FLUX_START python example_workflows/general/dependencies/workflow.py
 
 Do not use ``--test-size`` for production scientific computation because each
 test broker rediscovers and duplicates the same physical resource inventory.

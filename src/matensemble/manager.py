@@ -165,8 +165,7 @@ class FluxManager:
         self._futures = set()
         self._state_lock = threading.RLock()
 
-        # Acquire one Flux resource snapshot at startup. Fluxlet receives the
-        # resulting topology so it does not issue a duplicate resource-list RPC.
+        # Apply the resource policy once before initializing Fluxlet.
         self._flux_handle = flux.Flux()
         self._requested_reserve_broker_node = reserve_broker_node
         self._requested_controller_cores = controller_cores
@@ -182,6 +181,7 @@ class FluxManager:
             self._nnodes_on_allocation, self._cores_per_node, self._gpus_per_node = (
                 self._get_allocation_info()
             )
+            self._check_resources()
             self._fluxlet = Fluxlet(
                 self._flux_handle,
                 self._nnodes_on_allocation,
@@ -296,13 +296,20 @@ class FluxManager:
         GPUs per node and number of CPUs per node.
         """
 
-<<<<<<< HEAD
-        # drain broker rank first, then measure what is actually usable
-        self._flux_handle.rpc("resource.drain", {"targets": "0"}).get()
-
-        resources = self._check_resources()
-=======
         resources = flux.resource.list.resource_list(self._flux_handle).get()
+        # Older Flux resource-list objects expose only the already-usable
+        # ``free`` view. Treat those as policy-applied snapshots.
+        if not hasattr(resources, "all"):
+            self._initial_resources = resources
+            nnodes = len(resources.free.ranks)
+            if nnodes == 0:
+                return 0, 0, 0
+            return (
+                nnodes,
+                resources.free.ncores // nnodes,
+                resources.free.ngpus // nnodes,
+            )
+
         all_ranks = set(resources.all.ranks)
         free_ranks = set(resources.free.ranks)
         rank_count = len(all_ranks)
@@ -351,7 +358,6 @@ class FluxManager:
                     else self._requested_controller_cores
                 )
 
->>>>>>> 26ca114 (updated install script)
         nnodes = len(resources.free.ranks)
         physical_cores = resources.free.ncores
         total_gpus = resources.free.ngpus
@@ -366,6 +372,7 @@ class FluxManager:
             )
 
         usable_cores = physical_cores - self._controller_cores
+        self._initial_resources = resources
         cores_per_node = usable_cores // nnodes
         gpus_per_node = total_gpus // nnodes
         return nnodes, cores_per_node, gpus_per_node
@@ -460,17 +467,25 @@ class FluxManager:
             The Flux resource snapshot used to initialize the counters.
         """
 
+        if not hasattr(self, "_state_lock"):
+            self._state_lock = threading.RLock()
+
         with self._state_lock:
-            if self._running_chores:
+            if getattr(self, "_running_chores", set()):
                 raise RuntimeError(
                     "Flux resources may only be polled before chores are submitted; "
                     "runtime capacity is tracked from submissions and completions"
                 )
 
-        resources = flux.resource.list.resource_list(self._flux_handle).get()
-<<<<<<< HEAD
+        resources = getattr(self, "_initial_resources", None)
+        if resources is None:
+            resources = flux.resource.list.resource_list(self._flux_handle).get()
+        else:
+            del self._initial_resources
         with self._state_lock:
-            self._total_cores = resources.free.ncores
+            self._total_cores = max(
+                0, resources.free.ncores - self._controller_cores
+            )
             self._total_gpus = resources.free.ngpus
             self._free_cores = self._total_cores
             self._free_gpus = self._total_gpus
@@ -483,10 +498,7 @@ class FluxManager:
         self._free_cores += released_cores
         self._free_gpus += released_gpus
 
-        if (
-            self._free_cores > self._total_cores
-            or self._free_gpus > self._total_gpus
-        ):
+        if self._free_cores > self._total_cores or self._free_gpus > self._total_gpus:
             raise RuntimeError(
                 "resource accounting exceeded the initial Flux allocation after "
                 f"finishing {chore.id}: cores={self._free_cores}/{self._total_cores}, "
@@ -526,10 +538,6 @@ class FluxManager:
                     self._blocked.discard(dep_id)
 
             return released
-=======
-        self._free_cores = max(0, resources.free.ncores - self._controller_cores)
-        self._free_gpus = resources.free.ngpus
->>>>>>> 26ca114 (updated install script)
 
     def _can_submit_now(self, chore: Chore) -> bool:
         """

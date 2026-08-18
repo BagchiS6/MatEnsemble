@@ -7,8 +7,6 @@ fi
 
 set -euo pipefail
 
-REPO_URL="${MATENSEMBLE_REPO_URL:-https://github.com/Q-CAD/MatEnsemble.git}"
-GHCR_NAMESPACE="${MATENSEMBLE_GHCR_NAMESPACE:-ghcr.io/q-cad/matensemble}"
 REPO_URL="${MATENSEMBLE_REPO_URL:-https://github.com/FredDude2004/MatEnsemble.git}"
 
 err() {
@@ -68,14 +66,9 @@ choose_system() {
 choose_install_root() {
 	local default_root
 	local path
-<<<<<<< HEAD
-	path="$(prompt_read "Where should MatEnsemble be installed? ")"
-	[[ -n "$path" ]] || err "install path is required"
-=======
 	default_root="${SCRATCH:-$PWD}/MatEnsemble"
 	path="$(prompt_read "Where should MatEnsemble be installed? [$default_root]: ")"
 	path="${path:-$default_root}"
->>>>>>> 26ca114 (updated install script)
 	echo "$path"
 }
 
