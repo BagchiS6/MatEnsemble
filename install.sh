@@ -266,3 +266,4 @@ main() {
 	[[ "$write_mcp" == "yes" ]] && echo "Next: cd \"$campaigns_dir\" and start your preferred agent."
 }
 
+main "$@"
