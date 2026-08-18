@@ -266,6 +266,3 @@ main() {
 	[[ "$write_mcp" == "yes" ]] && echo "Next: cd \"$campaigns_dir\" and start your preferred agent."
 }
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-	main "$@"
-fi
