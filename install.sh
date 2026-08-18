@@ -48,10 +48,18 @@ expand_path() {
 }
 
 choose_install_root() {
-	local default_root="${SCRATCH:-$PWD}/MatEnsemble"
+	local default_parent="${SCRATCH:-$PWD}"
 	local path
-	path="$(prompt_read "Where would you like to install MatEnsemble? [$default_root]: ")"
-	echo "${path:-$default_root}"
+	path="$(prompt_read "Which directory should contain the MatEnsemble folder? [$default_parent]: ")"
+	path="${path:-$default_parent}"
+	path="$(expand_path "$path")"
+
+	# Accept an explicitly named MatEnsemble directory without adding it twice.
+	if [[ "${path%/}" == */MatEnsemble ]]; then
+		echo "${path%/}"
+	else
+		echo "${path%/}/MatEnsemble"
+	fi
 }
 
 choose_system() {
@@ -227,7 +235,7 @@ main() {
 	local install_root repo_dir campaigns_dir system="linux"
 	local write_mcp="no" uv_command=""
 
-	install_root="$(expand_path "$(choose_install_root)")"
+	install_root="$(choose_install_root)"
 	mkdir -p "$install_root"
 	install_root="$(cd "$install_root" && pwd)"
 	repo_dir="$install_root/.matensemble"
