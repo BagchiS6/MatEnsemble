@@ -65,6 +65,7 @@ def test_latest_container_tags_are_deterministic(monkeypatch: pytest.MonkeyPatch
         "frontier": "ghcr.io/q-cad/matensemble:frontier-v1.2.3",
         "perlmutter": "ghcr.io/q-cad/matensemble:perlmutter-v1.2.3",
         "pathfinder": "ghcr.io/q-cad/matensemble:pathfinder-v1.2.3",
+        "linux": "ghcr.io/q-cad/matensemble:linux-v1.2.3",
     }
 
 

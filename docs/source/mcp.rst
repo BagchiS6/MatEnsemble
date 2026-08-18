@@ -9,7 +9,7 @@ guidance, and dashboard helpers.
 Install on an HPC login node
 ============================
 
-Currently the MCP server is only targeted at the Frontier, Pathfinder and Perlmutter
+The MCP server supports Frontier, Pathfinder, Perlmutter, and general Linux
 HPC systems. To install the server you can use our script. The installer will prompt
 you for the directory where the MatEnsemble workspace should be created.
 
@@ -17,11 +17,13 @@ you for the directory where the MatEnsemble workspace should be created.
 
     curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/refs/heads/main/install.sh | bash
 
-The installer will create a directory named MatEnsemble which is where most of the
-MCP configuration will live. It will install the MatEnsemble CLI tool to ~/.local/bin
-and ensure that uv is installed. Afterwards it will place agent configuration files
-for Claude Code, Codex, GitHub Copilot and Gemini into a subdirectory named
-matensemble_campaigns.
+The installer creates a MatEnsemble checkout and asks whether to write MCP
+configuration files. If selected, it ensures that uv is installed and writes agent
+configuration files for Claude Code, Codex, GitHub Copilot, Gemini, and VS Code into
+a ``matensemble_campaigns`` workspace. By default it also pulls the latest image
+for the selected system. Selecting Frontier, Pathfinder, or Perlmutter installs
+and configures the matching site CLI automatically; general Linux installations
+detect Apptainer, Docker, Podman, or Podman-HPC and do not install the HPC CLI.
 
 Usage
 =====
