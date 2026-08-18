@@ -6,6 +6,57 @@ This guide covers the different methods of **installing** MatEnsemble: **what mu
 environment and **copy-pastable patterns** for common HPC runtimes. Pair it with :doc:`tutorials`
 for code samples and with :doc:`design` if you need a mental model of the runtime.
 
+=======
+Versions and compatibility
+==========================
+
+* **Python:** ``>=3.12`` (see ``requires-python`` in the project metadata).
+* **Flux:** You need a working Flux allocation or single-user Flux instance **before** importing MatEnsemble
+  for real runs. The PyPI extra ``flux`` installs the Python bindings; it does not install flux-core for you.
+* **Operating system:** Linux is assumed for HPC-style Flux workflows. macOS or Windows installs may work for editing
+  workflows but are not the primary target for execution.
+
+Single-node production and local development
+============================================
+
+MatEnsemble supports real single-node Flux instances. With the default
+``Pipeline()`` configuration, MatEnsemble keeps rank 0 schedulable when Flux
+reports one rank and reserves one core of chore capacity for Flux and the
+MatEnsemble controller. Start a production workflow on the node with:
+
+.. code-block:: bash
+
+   flux start python workflow.py
+
+This uses the hardware Flux actually discovers; it does not simulate or multiply
+resources. The policy can also be selected explicitly:
+
+.. code-block:: python
+
+   pipe = Pipeline(reserve_broker_node=False, controller_cores=1)
+
+``reserve_broker_node=None`` (the default) shares a single rank and dedicates
+rank 0 when multiple ranks are present. ``True`` always requests a dedicated
+rank 0 and ``False`` always keeps rank 0 available to chores. A dedicated broker
+node requires at least two ranks.
+
+The repository dev container also includes Flux for simulated multi-rank smoke
+tests. Use ``--test-size`` only when intentionally testing multi-rank scheduling
+on one physical machine:
+
+.. code-block:: bash
+
+   flux start -s 2 python example_workflows/generic/dependencies/workflow.py
+
+The dev container sets ``MATENSEMBLE_FLUX_START`` to this simulated launcher:
+
+.. code-block:: bash
+
+   $MATENSEMBLE_FLUX_START python example_workflows/generic/dependencies/workflow.py
+
+Do not use ``--test-size`` for production scientific computation because each
+test broker rediscovers and duplicates the same physical resource inventory.
+
 Container images (recommended on clusters)
 ===========================================
 

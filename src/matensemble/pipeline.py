@@ -70,6 +70,8 @@ class Pipeline:
         self,
         basedir: str | None = None,
         registry: ChoreRegistry | None = None,
+        reserve_broker_node: bool | None = None,
+        controller_cores: int | None = None,
     ) -> None:
         """
         Parameters
@@ -77,12 +79,36 @@ class Pipeline:
         basedir : str, optional
             The root directory of the workflow. Defaults to the current working
             directory
+        reserve_broker_node : bool or None, optional
+            Controls whether Flux broker rank 0 is reserved exclusively for the
+            workflow controller. ``None`` (the default) shares rank 0 for a
+            single-rank Flux instance and reserves it for a multi-rank instance.
+            ``True`` always reserves rank 0, while ``False`` always allows chores
+            to run there.
+        controller_cores : int or None, optional
+            Chore capacity to leave available for Flux and MatEnsemble in a
+            shared, single-rank instance. ``None`` reserves one core in that
+            configuration and zero otherwise. Explicit nonzero reservations are
+            only supported for single-rank instances.
         """
+
+        if reserve_broker_node is not None and not isinstance(
+            reserve_broker_node, bool
+        ):
+            raise TypeError("reserve_broker_node must be a bool or None")
+        if controller_cores is not None and (
+            isinstance(controller_cores, bool)
+            or not isinstance(controller_cores, int)
+            or controller_cores < 0
+        ):
+            raise ValueError("controller_cores must be a non-negative integer or None")
 
         self._counter = 0
         self._chore_list: list[Chore] = []
         self._registry = registry if registry is not None else ChoreRegistry()
         self._output_reference_list: list[OutputReference] = []
+        self._reserve_broker_node = reserve_broker_node
+        self._controller_cores = controller_cores
 
         root = Path.cwd() if basedir is None else Path(basedir)
         self._base_dir = (
@@ -749,6 +775,8 @@ class Pipeline:
                 write_restart_freq=write_restart_freq,
                 set_cpu_affinity=set_cpu_affinity,
                 set_gpu_affinity=set_gpu_affinity,
+                reserve_broker_node=self._reserve_broker_node,
+                controller_cores=self._controller_cores,
             )
 
             if self._strategy_spec:

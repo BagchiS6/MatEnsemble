@@ -111,6 +111,10 @@ The manager estimates **needed** cores and GPUs as ``num_tasks * cores_per_task`
 * The **total** allocation (all chores must fit in the worst case—oversized chores are marked invalid).
 * The **currently free** counters initialized from Flux once after rank 0 is drained for the broker, then
   decremented on submission and incremented when MatEnsemble processes each completed future.
+=======
+* The **currently free** counts reported by Flux after applying the pipeline's
+  broker policy. Automatic mode shares rank 0 and reserves one controller core
+  in a single-rank instance, while dedicating rank 0 in a multi-rank instance.
 
 GPU affinity shell options are only applied when ``gpus_per_task > 0`` and GPU affinity is enabled
 on submit.

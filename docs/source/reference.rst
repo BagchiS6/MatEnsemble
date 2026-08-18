@@ -54,6 +54,18 @@ a Python chore if you need DAG edges.
 ``Pipeline.submit``
 -------------------
 
+Broker placement is configured when constructing :class:`~matensemble.pipeline.Pipeline`:
+
+``reserve_broker_node`` (``bool`` or ``None``; default ``None``)
+    Automatic mode (``None``) shares rank 0 for a single-rank Flux instance and
+    dedicates it for a multi-rank instance. ``False`` always shares rank 0;
+    ``True`` always dedicates it and therefore requires at least two ranks.
+
+``controller_cores`` (``int`` or ``None``; default ``None``)
+    Chore capacity retained for the controller in a shared single-rank instance.
+    ``None`` reserves one core in that configuration and zero otherwise. This is
+    capacity accounting rather than hard CPU-ID pinning.
+
 ``write_restart_freq`` (:class:`int` or ``None``; default ``None``)
     Restart/checkpoint files are not supported yet. Leave this as ``None``. Passing an integer raises
     :exc:`NotImplementedError` before work is submitted.

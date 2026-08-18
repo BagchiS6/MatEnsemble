@@ -51,7 +51,7 @@ class FluxManager:
     _write_restart_freq : int
         The number of chores to be completed before pickling a restart file
     _nnodes_on_allocation : int
-        The number of nodes available on the allocaiton minus one for flux broker
+        The number of nodes available to chores after applying the broker policy.
     _cores_per_node : int
         The number of cores that are on each node
     _gpus_per_node : int
@@ -74,6 +74,8 @@ class FluxManager:
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = True,
         restart_file: str | None = None,
+        reserve_broker_node: bool | None = None,
+        controller_cores: int | None = None,
     ) -> None:
         """
         Parameters
@@ -91,6 +93,13 @@ class FluxManager:
         restart_file : str
             The path to a restart file which will be loaded and restart the work-
             flow from the save point, default to None.
+        reserve_broker_node : bool or None, optional
+            ``None`` shares rank 0 in a single-rank instance and reserves it in
+            a multi-rank instance. ``True`` always reserves rank 0 and ``False``
+            always keeps it available to chores.
+        controller_cores : int or None, optional
+            Chore capacity reserved for the controller in shared single-rank
+            mode. ``None`` defaults to one core in that mode and zero otherwise.
 
         Return
         ------
@@ -113,6 +122,16 @@ class FluxManager:
             raise Exception(
                 f"Error: expected base_dir to be a `Path` instead got {base_dir}"
             )
+        if reserve_broker_node is not None and not isinstance(
+            reserve_broker_node, bool
+        ):
+            raise TypeError("reserve_broker_node must be a bool or None")
+        if controller_cores is not None and (
+            isinstance(controller_cores, bool)
+            or not isinstance(controller_cores, int)
+            or controller_cores < 0
+        ):
+            raise ValueError("controller_cores must be a non-negative integer or None")
 
         self._base_dir = Path(base_dir)
         self._base_dir.mkdir(parents=True, exist_ok=True)
@@ -149,28 +168,38 @@ class FluxManager:
         # Acquire one Flux resource snapshot at startup. Fluxlet receives the
         # resulting topology so it does not issue a duplicate resource-list RPC.
         self._flux_handle = flux.Flux()
-        self._nnodes_on_allocation, self._cores_per_node, self._gpus_per_node = (
-            self._get_allocation_info()
-        )
-        self._fluxlet = Fluxlet(
-            self._flux_handle,
-            num_nodes=self._nnodes_on_allocation,
-            gpus_per_node=self._gpus_per_node,
-        )
+        self._requested_reserve_broker_node = reserve_broker_node
+        self._requested_controller_cores = controller_cores
+        self._reserve_broker_node = False
+        self._controller_cores = 0
+        self._drained_broker_node = False
 
         self._write_restart_freq = write_restart_freq
 
-        # setup logging
-        self._set_cpu_affinity = set_cpu_affinity
-        self._set_gpu_affinity = set_gpu_affinity
+        try:
+            # setup logging and the job launcher from one authoritative resource
+            # policy. Fluxlet must not mutate the allocation independently.
+            self._nnodes_on_allocation, self._cores_per_node, self._gpus_per_node = (
+                self._get_allocation_info()
+            )
+            self._fluxlet = Fluxlet(
+                self._flux_handle,
+                self._nnodes_on_allocation,
+                self._gpus_per_node,
+            )
+            self._set_cpu_affinity = set_cpu_affinity
+            self._set_gpu_affinity = set_gpu_affinity
 
-        self._status_writer = _setup_status_writer(
-            self._base_dir / "status.json",
-            nnodes=self._nnodes_on_allocation,
-            cores_per_node=self._cores_per_node,
-            gpus_per_node=self._gpus_per_node,
-        )
-        self._logger = _setup_logger(self._base_dir)
+            self._status_writer = _setup_status_writer(
+                self._base_dir / "status.json",
+                nnodes=self._nnodes_on_allocation,
+                cores_per_node=self._cores_per_node,
+                gpus_per_node=self._gpus_per_node,
+            )
+            self._logger = _setup_logger(self._base_dir)
+        except Exception:
+            self._restore_broker_node()
+            raise
 
     def _next_ready_order(self) -> int:
         order = getattr(self, "_ready_order_counter", 0)
@@ -267,20 +296,87 @@ class FluxManager:
         GPUs per node and number of CPUs per node.
         """
 
+<<<<<<< HEAD
         # drain broker rank first, then measure what is actually usable
         self._flux_handle.rpc("resource.drain", {"targets": "0"}).get()
 
         resources = self._check_resources()
+=======
+        resources = flux.resource.list.resource_list(self._flux_handle).get()
+        all_ranks = set(resources.all.ranks)
+        free_ranks = set(resources.free.ranks)
+        rank_count = len(all_ranks)
+
+        if rank_count == 0:
+            raise RuntimeError("Flux reported an empty resource inventory")
+
+        self._reserve_broker_node = (
+            rank_count > 1
+            if self._requested_reserve_broker_node is None
+            else self._requested_reserve_broker_node
+        )
+
+        if self._reserve_broker_node:
+            if rank_count == 1:
+                raise ValueError(
+                    "reserve_broker_node=True cannot be used with a single-rank "
+                    "Flux instance because it would leave no resources for chores; "
+                    "use reserve_broker_node=False or the default automatic mode"
+                )
+            if self._requested_controller_cores not in (None, 0):
+                raise ValueError(
+                    "controller_cores cannot be reserved when rank 0 is dedicated"
+                )
+            self._controller_cores = 0
+            self._flux_handle.rpc("resource.drain", {"targets": "0"}).get()
+            self._drained_broker_node = True
+            resources = flux.resource.list.resource_list(self._flux_handle).get()
+        else:
+            if 0 not in free_ranks:
+                raise RuntimeError(
+                    "shared broker mode requires rank 0 to be available; start a "
+                    "fresh Flux instance or explicitly undrain rank 0"
+                )
+            if rank_count > 1:
+                if self._requested_controller_cores not in (None, 0):
+                    raise ValueError(
+                        "nonzero controller_cores are only supported in a "
+                        "single-rank Flux instance"
+                    )
+                self._controller_cores = 0
+            else:
+                self._controller_cores = (
+                    1
+                    if self._requested_controller_cores is None
+                    else self._requested_controller_cores
+                )
+
+>>>>>>> 26ca114 (updated install script)
         nnodes = len(resources.free.ranks)
-        total_cores = resources.free.ncores
+        physical_cores = resources.free.ncores
         total_gpus = resources.free.ngpus
 
         if nnodes == 0:
             return 0, 0, 0
 
-        cores_per_node = total_cores // nnodes
+        if self._controller_cores >= physical_cores:
+            raise ValueError(
+                f"controller_cores={self._controller_cores} leaves no cores for "
+                f"chores on a {physical_cores}-core Flux allocation"
+            )
+
+        usable_cores = physical_cores - self._controller_cores
+        cores_per_node = usable_cores // nnodes
         gpus_per_node = total_gpus // nnodes
         return nnodes, cores_per_node, gpus_per_node
+
+    def _restore_broker_node(self) -> None:
+        """Undo a rank-0 drain owned by this manager."""
+
+        if not getattr(self, "_drained_broker_node", False):
+            return
+        self._flux_handle.rpc("resource.undrain", {"targets": "0"}).get()
+        self._drained_broker_node = False
 
     def _chore_resource_footprint(self, chore: Chore) -> tuple[int, int]:
         """
@@ -372,6 +468,7 @@ class FluxManager:
                 )
 
         resources = flux.resource.list.resource_list(self._flux_handle).get()
+<<<<<<< HEAD
         with self._state_lock:
             self._total_cores = resources.free.ncores
             self._total_gpus = resources.free.ngpus
@@ -429,6 +526,10 @@ class FluxManager:
                     self._blocked.discard(dep_id)
 
             return released
+=======
+        self._free_cores = max(0, resources.free.ncores - self._controller_cores)
+        self._free_gpus = resources.free.ngpus
+>>>>>>> 26ca114 (updated install script)
 
     def _can_submit_now(self, chore: Chore) -> bool:
         """
@@ -663,6 +764,29 @@ class FluxManager:
         return True
 
     def run(
+        self,
+        buffer_time: float = 1.0,
+        log_delay: float = 5.0,
+        adaptive: bool = True,
+        dynopro: bool = False,
+        processing_strategy: FutureProcessingStrategy | None = None,
+        restarting: bool = False,
+    ) -> None:
+        """Run the workflow and restore any broker-node drain owned by it."""
+
+        try:
+            self._run_workflow(
+                buffer_time=buffer_time,
+                log_delay=log_delay,
+                adaptive=adaptive,
+                dynopro=dynopro,
+                processing_strategy=processing_strategy,
+                restarting=restarting,
+            )
+        finally:
+            self._restore_broker_node()
+
+    def _run_workflow(
         self,
         buffer_time: float = 1.0,
         log_delay: float = 5.0,

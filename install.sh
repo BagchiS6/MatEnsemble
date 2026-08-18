@@ -9,6 +9,7 @@ set -euo pipefail
 
 REPO_URL="${MATENSEMBLE_REPO_URL:-https://github.com/Q-CAD/MatEnsemble.git}"
 GHCR_NAMESPACE="${MATENSEMBLE_GHCR_NAMESPACE:-ghcr.io/q-cad/matensemble}"
+REPO_URL="${MATENSEMBLE_REPO_URL:-https://github.com/FredDude2004/MatEnsemble.git}"
 
 err() {
 	echo "install.sh: error: $*" >&2
@@ -27,12 +28,10 @@ prompt_read() {
 
 prompt_yes_no() {
 	local prompt="$1"
-	local default="$2"
 	local answer
 	while true; do
 		answer="$(prompt_read "$prompt")"
-		answer="${answer:-$default}"
-		case "$answer" in
+		case "${answer:-y}" in
 		y | Y | yes | YES) return 0 ;;
 		n | N | no | NO) return 1 ;;
 		*) echo "Please answer y or n." >&2 ;;
@@ -51,23 +50,32 @@ expand_path() {
 
 choose_system() {
 	local choice
-	echo "Which system are you on?" >&2
-	echo "  1. Frontier" >&2
-	echo "  2. Perlmutter" >&2
-	echo "  3. Pathfinder" >&2
-	choice="$(prompt_read "[1-3]: ")"
-	case "$choice" in
-	1 | frontier | Frontier) echo "frontier" ;;
-	2 | perlmutter | Perlmutter) echo "perlmutter" ;;
-	3 | pathfinder | Pathfinder) echo "pathfinder" ;;
-	*) err "expected 1/frontier, 2/perlmutter, or 3/pathfinder" ;;
-	esac
+	while true; do
+		echo "Which system will run MatEnsemble?" >&2
+		echo "  1. Frontier   (Apptainer)" >&2
+		echo "  2. Perlmutter (Podman-HPC)" >&2
+		echo "  3. Pathfinder (Apptainer)" >&2
+		choice="$(prompt_read "Choose a system [1-3]: ")"
+		case "$choice" in
+		1 | frontier | Frontier) echo "frontier"; return ;;
+		2 | perlmutter | Perlmutter) echo "perlmutter"; return ;;
+		3 | pathfinder | Pathfinder) echo "pathfinder"; return ;;
+		*) echo "Please choose 1, 2, or 3." >&2 ;;
+		esac
+	done
 }
 
-choose_base() {
+choose_install_root() {
+	local default_root
 	local path
+<<<<<<< HEAD
 	path="$(prompt_read "Where should MatEnsemble be installed? ")"
 	[[ -n "$path" ]] || err "install path is required"
+=======
+	default_root="${SCRATCH:-$PWD}/MatEnsemble"
+	path="$(prompt_read "Where should MatEnsemble be installed? [$default_root]: ")"
+	path="${path:-$default_root}"
+>>>>>>> 26ca114 (updated install script)
 	echo "$path"
 }
 
@@ -81,20 +89,18 @@ clone_or_reuse_repo() {
 	if [[ -e "$repo_dir" ]] && [[ -n "$(find "$repo_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
 		err "$repo_dir exists and is not an empty git checkout"
 	fi
-	git clone "$REPO_URL" "$repo_dir"
+	git clone --depth=1 "$REPO_URL" "$repo_dir"
 }
 
 ensure_uv() {
 	if command -v uv >/dev/null 2>&1; then
-		echo "Found uv: $(command -v uv)"
 		return
 	fi
-	if prompt_yes_no "uv is not installed. Install uv now? [Y/n] " "Y"; then
-		curl -LsSf https://astral.sh/uv/install.sh | sh
-	else
-		err "uv is required"
-	fi
-	command -v uv >/dev/null 2>&1 || err "uv was not found after installation; restart your shell or add uv to PATH"
+	echo "uv is required by the MCP server; installing it now."
+	command -v curl >/dev/null 2>&1 || err "curl is required to install uv"
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+	[[ -x "$HOME/.local/bin/uv" ]] || err "uv was not found after installation"
+	export PATH="$HOME/.local/bin:$PATH"
 }
 
 install_cli() {
@@ -118,35 +124,52 @@ matensemble_version() {
 	awk -F '"' '/^version = / { print $2; exit }' "$repo_dir/pyproject.toml"
 }
 
-container_command() {
-	local install_root="$1"
-	local system="$2"
-	local version="$3"
-	local image="${GHCR_NAMESPACE}:${system}-v${version}"
-	if [[ "$system" == "perlmutter" ]]; then
-		echo "podman-hpc pull $image"
-	else
-		printf 'apptainer build %q %q\n' "${install_root}/containers/${system}/matensemble.sif" "docker://${image}"
-	fi
-}
+install_container() {
+	local repo_dir="$1"
+	local install_root="$2"
+	local system="$3"
+	local cli="$4"
+	local version
+	local image
+	local container_dir
+	local container_file
 
-run_container_command() {
-	local install_root="$1"
-	local system="$2"
-	local version="$3"
-	local image="${GHCR_NAMESPACE}:${system}-v${version}"
-	if [[ "$system" == "perlmutter" ]]; then
-		podman-hpc pull "$image"
-	else
-		apptainer build "${install_root}/containers/${system}/matensemble.sif" "docker://${image}"
+	if ! prompt_yes_no "Install the latest MatEnsemble container for $system? [Y/n] "; then
+		return 0
 	fi
+
+	version="$(matensemble_version "$repo_dir")"
+	[[ -n "$version" ]] || err "could not read the MatEnsemble version from $repo_dir/pyproject.toml"
+	image="ghcr.io/freddude2004/matensemble:${system}-v${version}"
+
+	if [[ "$system" == "perlmutter" ]]; then
+		command -v podman-hpc >/dev/null 2>&1 || err "podman-hpc is required to install the Perlmutter container"
+		echo "Installing MatEnsemble $version container for Perlmutter..."
+		podman-hpc pull "$image"
+		"$cli" set-image "$image"
+		return 0
+	fi
+
+	command -v apptainer >/dev/null 2>&1 || err "apptainer is required to install the $system container"
+	container_dir="$install_root/containers/$system"
+	container_file="$container_dir/matensemble-v${version}.sif"
+	mkdir -p "$container_dir"
+
+	if [[ -f "$container_file" ]]; then
+		echo "Using existing MatEnsemble container: $container_file"
+	else
+		echo "Installing MatEnsemble $version container for $system..."
+		apptainer build "$container_file" "docker://$image"
+	fi
+
+	"$cli" set-image "$container_file"
 }
 
 write_configs() {
-	local install_root="$1"
-	local repo_dir="$2"
-	local campaigns_dir="$3"
-	local system="$4"
+	local repo_dir="$1"
+	local campaigns_dir="$2"
+	local system="$3"
+	local uv_command="$4"
 	local codex_dir="$campaigns_dir/.codex"
 	local copilot_dir="$campaigns_dir/.copilot"
 	local gemini_dir="$campaigns_dir/.gemini"
@@ -156,7 +179,7 @@ write_configs() {
 
 	cat >"$codex_dir/config.toml" <<EOF_CODEX
 [mcp_servers.matensemble]
-command = "uv"
+command = "$uv_command"
 args = [
   "run",
   "--directory",
@@ -175,7 +198,7 @@ EOF_CODEX
 {
   "mcpServers": {
     "matensemble": {
-      "command": "uv",
+      "command": "$uv_command",
       "args": [
         "run",
         "--directory",
@@ -197,7 +220,7 @@ EOF_CLAUDE
   "mcpServers": {
     "matensemble": {
       "type": "local",
-      "command": "uv",
+      "command": "$uv_command",
       "args": [
         "run",
         "--directory",
@@ -220,7 +243,7 @@ EOF_COPILOT
 {
   "mcpServers": {
     "matensemble": {
-      "command": "uv",
+      "command": "$uv_command",
       "args": [
         "run",
         "--directory",
@@ -244,7 +267,7 @@ EOF_GEMINI
   "servers": {
     "matensemble": {
       "type": "stdio",
-      "command": "uv",
+      "command": "$uv_command",
       "args": [
         "run",
         "--directory",
@@ -284,53 +307,39 @@ EOF_README
 
 main() {
 	local system
-	local base
 	local install_root
 	local repo_dir
 	local campaigns_dir
-	local version
-	local command_text
+	local uv_command
+	local cli
 
 	system="$(choose_system)"
-	base="$(choose_base)"
-	base="$(expand_path "$base")"
-	base="$(cd "$base" 2>/dev/null && pwd || {
-		mkdir -p "$base"
-		cd "$base"
+	install_root="$(choose_install_root)"
+	install_root="$(expand_path "$install_root")"
+	install_root="$(cd "$install_root" 2>/dev/null && pwd || {
+		mkdir -p "$install_root"
+		cd "$install_root"
 		pwd
 	})"
-	install_root="$base/MatEnsemble"
 	repo_dir="$install_root/.matensemble"
 	campaigns_dir="$install_root/matensemble_campaigns"
 
-	mkdir -p "$install_root" "$campaigns_dir" "$install_root/containers/$system"
+	command -v git >/dev/null 2>&1 || err "git is required"
 	clone_or_reuse_repo "$repo_dir"
+	mkdir -p "$campaigns_dir"
 	ensure_uv
+	uv_command="$(command -v uv)"
 
-	version="$(matensemble_version "$repo_dir")"
-	[[ -n "$version" ]] || err "could not read MatEnsemble version from $repo_dir/pyproject.toml"
-
-	if prompt_yes_no "Install the MatEnsemble CLI tool? [Y/n] " "Y"; then
-		install_cli "$repo_dir" "$system"
-	fi
-
-	if prompt_yes_no "Install the MatEnsemble MCP server config files? [Y/n] " "Y"; then
-		write_configs "$install_root" "$repo_dir" "$campaigns_dir" "$system"
-	fi
-
-	command_text="$(container_command "$install_root" "$system" "$version")"
-	if prompt_yes_no "Build or pull the MatEnsemble container now? [Y/n] " "Y"; then
-		echo "Running: $command_text"
-		run_container_command "$install_root" "$system" "$version"
-	else
-		echo "Container command for later:"
-		echo "  $command_text"
-	fi
+	install_cli "$repo_dir" "$system"
+	cli="$HOME/.local/bin/matensemble"
+	install_container "$repo_dir" "$install_root" "$system" "$cli"
+	write_configs "$repo_dir" "$campaigns_dir" "$system" "$uv_command"
 
 	echo
 	echo "MatEnsemble install root: $install_root"
 	echo "Repository checkout: $repo_dir"
 	echo "Campaign workspace: $campaigns_dir"
+	echo "Next: cd \"$campaigns_dir\" and start your preferred agent."
 }
 
 main "$@"

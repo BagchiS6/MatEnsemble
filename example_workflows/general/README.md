@@ -11,3 +11,29 @@ Python workflow pattern here with that system's launch instructions and examples
 
 MatEnsemble workflows are centered around `Chores` which are delayed function calls that are serialized and later called on compute resources that MatEnsemble has control over
 
+=======
+## Dev container and local Flux runs
+
+Inside the repository dev container, run these examples with a multi-rank Flux test instance:
+
+```bash
+flux start -s 2 python example_workflows/generic/dependencies/workflow.py
+```
+
+The dev container also sets:
+
+```bash
+MATENSEMBLE_FLUX_START="flux start -s 2"
+```
+
+so this works in an interactive shell:
+
+```bash
+$MATENSEMBLE_FLUX_START python example_workflows/generic/dependencies/workflow.py
+```
+
+For a real single-node run, use `flux start python <workflow.py>`. The default
+`Pipeline()` policy keeps the only rank schedulable and reserves one core of
+chore capacity for Flux and the MatEnsemble controller. Use the test-size
+launcher above only when intentionally simulating multiple Flux ranks on one
+physical node.
