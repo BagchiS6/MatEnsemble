@@ -7,7 +7,7 @@ fi
 
 set -euo pipefail
 
-REPO_URL="${MATENSEMBLE_REPO_URL:-https://github.com/Q-CAD/MatEnsemble.git}"
+REPO_URL="${MATENSEMBLE_REPO_URL:-https://github.com/FredDude2004/MatEnsemble.git}"
 IMAGE_REPOSITORY="${MATENSEMBLE_IMAGE_REPOSITORY:-ghcr.io/freddude2004/matensemble}"
 
 err() {
