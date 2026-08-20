@@ -201,6 +201,10 @@ class FluxManager:
             self._restore_broker_node()
             raise
 
+    # NOTE: The ready ordering is based on the nice score.
+    #       The manager will constantly be sorting the ready
+    #       list to give the user more control over what gets
+    #       scheduled
     def _next_ready_order(self) -> int:
         order = getattr(self, "_ready_order_counter", 0)
         self._ready_order_counter = order + 1
@@ -297,8 +301,6 @@ class FluxManager:
         """
 
         resources = flux.resource.list.resource_list(self._flux_handle).get()
-        # Older Flux resource-list objects expose only the already-usable
-        # ``free`` view. Treat those as policy-applied snapshots.
         if not hasattr(resources, "all"):
             self._initial_resources = resources
             nnodes = len(resources.free.ranks)
@@ -455,12 +457,6 @@ class FluxManager:
         """
         Initialize resource counters from one Flux resource snapshot.
 
-        After jobs start, MatEnsemble owns these counters: submission reserves
-        resources and future completion releases them. Re-polling Flux in the
-        scheduling loop can observe a different instant than future processing,
-        double-count released resources, and adds an RPC to the adaptive refill
-        path.
-
         Return
         ------
         flux.resource.ResourceList
@@ -483,9 +479,7 @@ class FluxManager:
         else:
             del self._initial_resources
         with self._state_lock:
-            self._total_cores = max(
-                0, resources.free.ncores - self._controller_cores
-            )
+            self._total_cores = max(0, resources.free.ncores - self._controller_cores)
             self._total_gpus = resources.free.ngpus
             self._free_cores = self._total_cores
             self._free_gpus = self._total_gpus

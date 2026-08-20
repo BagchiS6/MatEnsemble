@@ -103,7 +103,7 @@ Broker placement is configured when constructing :class:`~matensemble.pipeline.P
 ----------------------
 
 MatEnsemble writes dashboard status with schema version 2 and two files. Serve
-the browser UI separately with ``matensemble dashboard <campaign-root>`` or the
+the browser UI separately with ``matensemble-dashboard <campaign-root>`` or the
 MCP server's ``launch_dashboard`` helper.
 
 ``status.json``

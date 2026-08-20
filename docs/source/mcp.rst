@@ -108,7 +108,7 @@ checkout with ``uv``:
 
 .. code-block:: bash
 
-   uv run --project /path/to/MatEnsemble matensemble dashboard /path/to/matensemble_campaigns --host 127.0.0.1 --port 8000
+   uv run --project /path/to/MatEnsemble matensemble-dashboard /path/to/matensemble_campaigns --host 127.0.0.1 --port 8000
 
 The ``launch_dashboard`` response includes the exact command, working directory, project
 root, and log path. If a launch exits immediately, check that the reported working

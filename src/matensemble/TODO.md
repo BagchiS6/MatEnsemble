@@ -88,7 +88,7 @@
 - [x] Write the Job objects specification to a file in their direcotry
 
 ## --- Status Dashboard ---
-- [x] Serve workflow status through the standalone `matensemble dashboard` command
+- [x] Serve workflow status through the standalone `matensemble-dashboard` command
 - [x] Remove the embedded `Pipeline.submit(dashboard=True)` launch path
 
 ## --- Science Example ---
@@ -264,11 +264,11 @@
 - [x] Add a util function to turn the DAG into a photo
 - [x] Fix the MCP errors with launching the dashboard
 - [x] Take a look at Maestro
+- [x] Make an install of MatEnsemble that can run on linux with the install script (maybe with conda)
+- [x] Make presentation for Group meeting next Wednesday
 - [ ] Update the Figures in JOSS paper to be much bigger.
-- [ ] Make an install of MatEnsemble that can run on linux with the install script (maybe with conda)
 - [ ] Really polish the MatEnsemble install documentation and MCP stuff
 - [ ] Follow the documentation from scratch make sure there are no rough edges
-- [ ] Make presentation for Group meeting next Wednesday
 
 ## --- Comparisons ---
 - [ ] Make a demo comparing the other workflow managers to MatEnsemble (JobFlow, Parsl, libEnsemble, RADICAL-plot, scheduler from scratch)
@@ -278,4 +278,3 @@
       - how long did it run?
       - how much did I need to guide the AI?
       - Could I run the workflow? Use purley the AI
-

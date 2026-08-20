@@ -148,13 +148,13 @@ Dashboard (optional)
 
 MatEnsemble writes dashboard-ready ``status.json`` and ``status_history.jsonl``
 files for every workflow. The dashboard server is launched separately from the
-workflow with the ``matensemble dashboard`` CLI. On HPC systems, the recommended
+workflow with the ``matensemble-dashboard`` CLI. On HPC systems, the recommended
 remote viewing pattern is to start the dashboard on the **login node** and bind
 it to loopback only:
 
 .. code-block:: bash
 
-   matensemble dashboard /path/to/matensemble_campaign --host 127.0.0.1 --port 8000
+   matensemble-dashboard /path/to/matensemble_campaign --host 127.0.0.1 --port 8000
 
 Then, from your laptop, forward local port ``8000`` to the login node:
 
@@ -168,7 +168,7 @@ files from the shared campaign directory.
 
 The MatEnsemble MCP server also exposes dashboard helpers:
 
-* ``launch_dashboard`` starts ``matensemble dashboard`` on the MCP server host.
+* ``launch_dashboard`` starts ``matensemble-dashboard`` on the MCP server host.
 * ``get_dashboard_access`` returns the SSH tunnel command and local URL.
 * ``stop_dashboard`` stops a dashboard process started by the MCP server.
 

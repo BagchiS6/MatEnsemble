@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [project.scripts]
-matensemble = "matensemble.cli:main"
+matensemble-dashboard = "matensemble.cli:main"
 
 [project.optional-dependencies]
 flux = [
