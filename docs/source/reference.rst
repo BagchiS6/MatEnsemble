@@ -137,8 +137,8 @@ The dashboard endpoints are:
 Legacy flat status files are normalized as schema version 1 input and exposed as a
 schema-v2 workflow with one synthetic history snapshot.
 
-Per-chore artifacts
--------------------
+Chore Artifacts
+---------------
 
 ``stdout`` / ``stderr``
     Standard streams from Flux. MatEnsemble appends human-readable blocks to ``stderr`` when futures raise
@@ -155,8 +155,8 @@ Per-chore artifacts
     Python return value. Downstream chores load ``../<dep_chore_id>/result.pickle`` via
     :func:`matensemble.runtime_worker._load_dep_result`.
 
-Failure ``reason`` strings (internal)
----------------------------------------
+Failure ``reason`` strings
+--------------------------
 
 Recorded in :meth:`~matensemble.manager.FluxManager._record_failure` entries:
 
@@ -166,9 +166,3 @@ Recorded in :meth:`~matensemble.manager.FluxManager._record_failure` entries:
 * ``nonzero_exit:<rc>`` — future returned a non-zero integer exit code.
 * ``dependency_failed`` — cascaded skip because an upstream chore failed.
 
-Redis helper (optional)
------------------------
-
-``matensemble.redis.service.RedisService`` can launch ``redis-server`` under ``flux run`` for streaming /
-timeseries-style workflows. It is **orthogonal** to :class:`~matensemble.pipeline.Pipeline` and is mainly
-used from dynamics/analysis integrations. There is no requirement to run Redis for basic DAG workflows.

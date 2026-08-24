@@ -7,12 +7,18 @@ This guide covers the different methods of **installing** MatEnsemble:
 .. contents:: Contents
    :depth 1
 
+Install Script
+==============
+
 We have an install script that will simplify the process of installing and setting up MatEnsemble
 which you can run with:
 
 .. code-block:: bash
 
     curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/refs/heads/main/install.sh | bash
+
+If you plan on using other software along side MatEnsemble then it is recommended to familiarize
+yourself with how to install MatEnsemble from scratch.
 
 Containers
 ==========
@@ -492,8 +498,8 @@ You should see all of the resources ready to use and are ready run one of your m
 
 The curated Pathfinder smoke-test example lives under ``example_workflows/pathfinder/lammps_smoke``.
 
-Dev Container
-=============
+Developer Container
+===================
 
 There is a .devcontainer folder in the repository so if you have Docker Desktop installed you can
 simply clone out the repository and open it in VS Code with the devcontainer extension installed.

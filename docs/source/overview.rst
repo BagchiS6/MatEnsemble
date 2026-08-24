@@ -81,8 +81,8 @@ Core
     `~matensemble.pipeline.Pipeline.strategy` can be used to create a processing strategy based on the
     results of an intermediate chore.
 
-Logging and on-disk layout
-==========================
+Outputs
+=======
 
 Every run creates a **timestamped workflow directory** under your chosen base path (by default the current
 working directory):
