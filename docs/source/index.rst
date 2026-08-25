@@ -18,10 +18,10 @@ systems, often on Peta and Exascale computing facilities, e.g., Perlmutter, Fron
 
    overview
    installation
-   mcp
-   examples
    tutorials
+   examples
    reference
+   mcp
 
 .. _api-reference:
 

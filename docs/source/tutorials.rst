@@ -159,8 +159,32 @@ for Perlmutter.
 Running MatEnsemble
 ===================
 
+After you are in a flux session you can now run a MatEnsemble script. Here we will go over the
+general shape of MatEnsemble workflows and common patterns.
+
 Pipeline
 --------
+
+The main user facing APIs of MatEnsemble are accesed through the Pipeline object. The pipline object
+is used to define work for the manager to schedule, add strategies and launch dynamic and adaptive
+workflows.
+
+.. code-block:: python
+
+   from matensemble.pipeline import Pipeline
+
+   pipe = Pipeline(
+            basedir=None,
+            registry=None,
+            reserve_broker_node=None,
+            controller_cores=None,
+          )
+
+Accepting the defaults is the recommended use of MatEnsemble but some of the arguments are worth
+noting depending on your use case. If you are on a single node machine (i.e. your local computer)
+then the reserve_broker_node should be set to False. MatEnsemble defaults to reserving an entire
+node to run the manager. If you are only on one node this wouldn't leave any resources for the
+actual jobs to run. Instead you can have the manager run on a specified number of CPU cores.
 
 Chores
 ------
