@@ -51,13 +51,6 @@ Rather than launching the MPI jobs directly, you describe the work declaratively
 =======
 >>>>>>> cb7d196 (updated dynopro to make it more general)
 
-While it can in general run on your personal Mac/Linux workstation and
-orchestrate arbitrary python callables, shell commands with explicit resource and dependency-aware
-execution graphs from a single python workflow driver process,  MatEnsemble shines with
-***user-defined autonomous strategic*** execution of large batches of adaptively and
-hierarchically-scheduled tasks on HPC systems, specifically on Peta and Exascale computing
-facilities, e.g., Perlmutter, Frontier, Aurora etc.
-
 Here is an example which defines a simple MPI chore, adds ten independent instances of it to a pipeline, and submits the workflow.
 
 ```python
@@ -94,7 +87,11 @@ curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/refs/heads/main/i
 
 ## Minimal Code Example
 
-MatEnsemble workflows are ordinary Python scripts (and/or shell commands) which can be use to: 1. define resource-aware chores, 2. pass chore outputs into later chores to create a DAG, and 3. add a strategy when the workflow should decide what to launch next while the campaign is already running.
+MatEnsemble workflows are ordinary Python scripts (and/or shell commands) which can be use to:
+
+1. define resource-aware chores
+2. Pass chore outputs into later chores to create a DAG
+3. Add a strategy when the workflow should decide what to launch next while the campaign is already running.
 
 ```python
 from matensemble.pipeline import Pipeline
