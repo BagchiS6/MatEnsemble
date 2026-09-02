@@ -5,8 +5,8 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any
 
-SUPPORTED_SYSTEMS = ("frontier", "perlmutter", "pathfinder")
-GHCR_NAMESPACE = "ghcr.io/freddude2004/matensemble"
+SUPPORTED_SYSTEMS = ("frontier", "perlmutter", "pathfinder", "linux")
+GHCR_NAMESPACE = "ghcr.io/q-cad/matensemble"
 
 CORE_SOURCE_FILES = (
     "pipeline.py",
@@ -60,18 +60,19 @@ workflows in an allocation.
 
 The standard image tag pattern is:
 
-    ghcr.io/freddude2004/matensemble:<system>-vX.Y.Z
+    ghcr.io/q-cad/matensemble:<system>-vX.Y.Z
 
-Where `<system>` is one of `frontier`, `perlmutter`, or `pathfinder`, and
+Where `<system>` is one of `frontier`, `perlmutter`, `pathfinder`, or `linux`, and
 `X.Y.Z` is the local MatEnsemble version. The MCP server does not probe GHCR for
 tags; it derives the expected latest tags from the checked-out MatEnsemble
 version.
 
 Frontier and Pathfinder normally use Apptainer `.sif` images built or pulled
 from the GHCR image. Perlmutter normally uses `podman-hpc pull` with the GHCR
-tag. If a user needs extra dependencies, start FROM the MatEnsemble image for
-their system and install additional apt, uv/pip, or compiled dependencies in a
-custom container layer.
+tag. General Linux installations use the `linux` image with Apptainer, Docker,
+or Podman. If a user needs extra dependencies, start FROM the MatEnsemble image
+for their system and install additional apt, uv/pip, or compiled dependencies
+in a custom container layer.
 """
 
 
@@ -118,7 +119,10 @@ def get_examples_for_system(system: str | None = None) -> dict[str, str]:
     key = normalize_system(system)
     root = repo_root()
     files: dict[str, str] = {}
-    for directory in (root / "example_workflows" / "generic", root / "example_workflows" / key):
+    for directory in (
+        root / "example_workflows" / "general",
+        root / "example_workflows" / key,
+    ):
         files.update(_read_tree(directory, root))
     return files
 
@@ -130,7 +134,9 @@ def get_example_batch_scripts(system: str | None = None) -> dict[str, dict[str, 
     if not example_root.is_dir():
         raise ValueError(f"directory not found: {example_root.relative_to(root)}")
     scripts: dict[str, dict[str, str]] = {}
-    for workflow_dir in sorted(path for path in example_root.iterdir() if path.is_dir()):
+    for workflow_dir in sorted(
+        path for path in example_root.iterdir() if path.is_dir()
+    ):
         script = workflow_dir / "submit.slurm"
         if script.is_file() and not script.is_symlink():
             scripts[workflow_dir.name] = {
@@ -179,9 +185,9 @@ def get_matensemble_core() -> dict[str, str]:
     root = repo_root()
     source_root = root / "src" / "matensemble"
     return {
-        str((source_root / filename).relative_to(root)): (source_root / filename).read_text(
-            encoding="utf-8", errors="replace"
-        )
+        str((source_root / filename).relative_to(root)): (
+            source_root / filename
+        ).read_text(encoding="utf-8", errors="replace")
         for filename in CORE_SOURCE_FILES
     }
 
@@ -196,7 +202,9 @@ def get_matensemble_version() -> dict[str, str]:
         version = metadata.version("matensemble")
         source = "package_metadata"
     except metadata.PackageNotFoundError:
-        data = tomllib.loads((repo_root() / "pyproject.toml").read_text(encoding="utf-8"))
+        data = tomllib.loads(
+            (repo_root() / "pyproject.toml").read_text(encoding="utf-8")
+        )
         version = str(data["project"]["version"])
         source = "pyproject.toml"
     return {"version": version, "tag_version": f"v{version}", "source": source}
@@ -208,7 +216,9 @@ def get_latest_container_tags() -> dict[str, Any]:
         "version": version,
         "registry_probe_performed": False,
         "pattern": f"{GHCR_NAMESPACE}:<system>-vX.Y.Z",
-        "tags": {system: container_tag(system, version) for system in SUPPORTED_SYSTEMS},
+        "tags": {
+            system: container_tag(system, version) for system in SUPPORTED_SYSTEMS
+        },
     }
 
 

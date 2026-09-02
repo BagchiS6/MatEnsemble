@@ -1,11 +1,64 @@
 import time
 import threading
+import pytest
 
 from concurrent.futures import Future
 from pathlib import Path
 
+from matensemble.chore import ChoreRegistry, ChoreSpec
+from matensemble.model import Resources
 from matensemble.model import OutputReference
 from matensemble.pipeline import Pipeline
+
+
+def test_pipeline_stores_broker_policy(tmp_path: Path):
+    pipeline = Pipeline(
+        basedir=str(tmp_path),
+        reserve_broker_node=False,
+        controller_cores=2,
+    )
+
+    assert pipeline._reserve_broker_node is False
+    assert pipeline._controller_cores == 2
+
+
+@pytest.mark.parametrize("value", [-1, True, 1.5, "1"])
+def test_pipeline_rejects_invalid_controller_cores(tmp_path: Path, value):
+    with pytest.raises(ValueError, match="controller_cores"):
+        Pipeline(basedir=str(tmp_path), controller_cores=value)
+
+
+def test_pipeline_rejects_non_boolean_broker_policy(tmp_path: Path):
+    with pytest.raises(TypeError, match="reserve_broker_node"):
+        Pipeline(basedir=str(tmp_path), reserve_broker_node="auto")
+
+
+def test_pipeline_passes_broker_policy_to_manager(monkeypatch, tmp_path: Path):
+    captured = {}
+
+    class _Manager:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+        def run(self, **_kwargs):
+            return None
+
+    monkeypatch.setattr("matensemble.pipeline.FluxManager", _Manager)
+    pipeline = Pipeline(
+        basedir=str(tmp_path),
+        reserve_broker_node=False,
+        controller_cores=2,
+    )
+
+    @pipeline.chore()
+    def work():
+        return 1
+
+    work()
+    pipeline._submit(buffer_time=0)
+
+    assert captured["reserve_broker_node"] is False
+    assert captured["controller_cores"] == 2
 
 
 def test_spawn_chore_from_name_infers_dependency(tmp_path: Path):
@@ -19,6 +72,55 @@ def test_spawn_chore_from_name_infers_dependency(tmp_path: Path):
     assert chore.deps == ("upstream-001",)
     assert chore.args[0] == upstream_ref
     assert str(chore.spec_path).endswith("chore.pickle")
+
+
+def test_pipe_chore_preserves_incrementing_ids_and_function_kwargs(tmp_path: Path):
+    pipeline = Pipeline(basedir=str(tmp_path))
+
+    @pipeline.chore(name="evaluate")
+    def evaluate(candidate, nice=None, resources=None):
+        return candidate, nice, resources
+
+    first = evaluate("a", nice="function-nice")
+    second = evaluate("b", resources="function-resources")
+
+    assert first.chore_id.endswith("chore-evaluate-0001")
+    assert second.chore_id.endswith("chore-evaluate-0002")
+    assert pipeline._chore_list[0].kwargs["nice"] == "function-nice"
+    assert pipeline._chore_list[1].kwargs["resources"] == "function-resources"
+
+
+def test_pipeline_call_uses_external_registry(tmp_path: Path):
+    registry = ChoreRegistry()
+
+    @registry.chore(name="evaluate", cores_per_task=2)
+    def evaluate(candidate):
+        return candidate
+
+    pipeline = Pipeline(basedir=str(tmp_path), registry=registry)
+    out_ref = pipeline.call("evaluate", "candidate", queue_nice=-5)
+    chore = pipeline._chore_list[0]
+
+    assert out_ref.chore_id.endswith("chore-evaluate-0001")
+    assert chore.chore_qualname == "evaluate"
+    assert chore.args == ("candidate",)
+    assert chore.resources.cores_per_task == 2
+    assert chore.nice == -5
+
+
+def test_spawn_chore_from_spec_copies_nice(tmp_path: Path):
+    pipeline = Pipeline(basedir=str(tmp_path))
+    spec = ChoreSpec(
+        args=("candidate",),
+        kwargs=None,
+        qualname="evaluate",
+        resources=Resources(),
+        nice=-10,
+    )
+
+    chore, _out = pipeline._spawn_chore_from_spec(spec)
+
+    assert chore.nice == -10
 
 
 def test_submit_returns_before_background_work_finishes(monkeypatch, tmp_path: Path):
