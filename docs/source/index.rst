@@ -18,7 +18,7 @@ systems, often on Peta and Exascale computing facilities, e.g., Perlmutter, Fron
 
    overview
    installation
-   tutorials
+   getting-started
    examples
    reference
    mcp
